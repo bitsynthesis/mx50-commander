@@ -1,11 +1,7 @@
 (set-env!
  :source-paths #{"src"}
  :dependencies '[[org.clojure/clojure "1.8.0"]
-                 [org.scream3r/jssc "2.8.0"]
-                 [overtone/midi-clj "0.5.0"]
-                 [overtone/at-at "1.0.0"]
-                 [org.clojure/tools.logging "0.3.0"]
-                 [clj-logging-config "1.9.12"]])
+                 [org.scream3r/jssc "2.8.0"]])
 
 
 (deftask build []
