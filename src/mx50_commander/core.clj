@@ -1,7 +1,11 @@
 (ns mx50-commander.core
-  (:require [clojure.core.async :refer [>! <! >!! <!!] :as a]))
+  (:require [clojure.core.async :refer [>!! <!!] :as a]))
 
 
+(declare get-current)
+
+
+(defrecord Command [id value])
 (defrecord Device [consumer current port queue rate])
 
 
@@ -31,18 +35,34 @@
   (a/chan))
 
 
-(defn get-queue [id]
+(defn- get-queue [id]
   (:queue (id @devices)))
 
 
-(defrecord Command [id value])
-
-
-(defn queue-command
+(defn- queue-command
   ([device-id value] (queue-command device-id value false))
   ([device-id value cmd-id]
    (>!! (get-queue device-id)
         (map->Command {:id cmd-id :value value}))))
+
+
+(defn- create-consumer [id]
+  (a/go
+   (loop []
+         (let [dev (id @devices)
+               cmd (<!! (:queue dev))]
+           (when (not (nil? cmd))
+             (if (= false (:id cmd))
+               (do
+                 (send-command (:port dev) (:value cmd))
+                 ;; TODO move this into send-command?
+                 (Thread/sleep (:rate dev)))
+               (when (not= (get-current id (:id cmd)) (:value cmd))
+                 (swap! devices assoc-in [id :current (:id cmd)] (:value cmd))
+                 (send-command (:port dev) (:value cmd))
+                 ;; TODO move this into send-command?
+                 (Thread/sleep (:rate dev))))
+             (recur))))))
 
 
 (defn get-current [id cmd-id]
@@ -74,25 +94,6 @@
          handler (partial queue-command id)]
      (swap! devices assoc id definition)
      handler)))
-
-
-(defn create-consumer [id]
-  (a/go
-   (loop []
-         (let [dev (id @devices)
-               cmd (<!! (:queue dev))]
-           (when (not (nil? cmd))
-             (if (= false (:id cmd))
-               (do
-                 (send-command (:port dev) (:value cmd))
-                 ;; TODO move this into send-command?
-                 (Thread/sleep (:rate dev)))
-               (when (not= (get-current id (:id cmd)) (:value cmd))
-                 (swap! devices assoc-in [id :current (:id cmd)] (:value cmd))
-                 (send-command (:port dev) (:value cmd))
-                 ;; TODO move this into send-command?
-                 (Thread/sleep (:rate dev))))
-             (recur))))))
 
 
 (defn stop
