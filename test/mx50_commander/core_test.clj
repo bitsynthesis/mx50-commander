@@ -1,7 +1,6 @@
-(ns mx-serial.core-test
+(ns mx50-commander.core-test
   (:require [clojure.test :refer :all]
-            [mx-serial.core :as mx]))
-
+            [mx50-commander.core :as mx]))
 
 ;; WARNING pseudo code - proposed API
 

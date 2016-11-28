@@ -15,8 +15,8 @@
 
 
 (deftask build []
-  (comp (aot :namespace #{'mx-serial.core})
-        (pom :project 'bbakersmith/mx-serial
-             :version "1.0.0")
-        (jar :main 'mx-serial.core)
+  (comp (aot :namespace #{'mx50-commander.core})
+        (pom :project 'bbakersmith/mx50-commander
+             :version "2.0.0")
+        (jar :main 'mx50-commander.core)
         (install)))

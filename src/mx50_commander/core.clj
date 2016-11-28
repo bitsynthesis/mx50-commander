@@ -1,4 +1,4 @@
-(ns mx-serial.core
+(ns mx50-commander.core
   (:require [clojure.core.async :refer [>! <! >!! <!!] :as a]))
 ;;
 ;;
