@@ -63,7 +63,7 @@
 
 
 
-(defrecord Device [current port queue rate])
+(defrecord Device [consumer current port queue rate])
 
 
 (def devices (atom {}))
@@ -89,15 +89,80 @@
     cmd))
 
 
+(defn- create-queue []
+  (a/chan))
+
+
+(defn get-queue [id]
+  (:queue (id @devices)))
+
+
+(defrecord Command [id value])
+
+
+(defn queue-command
+  ([device-id value] (queue-command device-id value false))
+  ([device-id value cmd-id]
+   ;; TODO set the cache. send-command is also a logical place, but that would
+   ;; require passing a more complex data structure through the queue to
+   ;; include the cache-id
+   (>!! (get-queue device-id)
+        (map->Command {:id cmd-id :value value}))))
+
+
+(defn get-current [id cmd-id]
+  (cmd-id (:current (id @devices))))
+
+
+(defn clear-current
+  ([])
+  ([id])
+  ([id cmd-id]
+   (swap! devices assoc-in [id :current cmd-id] nil)))
+
+
 (defn device
   "Register a device, returning a function to queue commands for execution."
   ([id] (device id {}))
   ([id params]
-   (let [defaults {:rate 100}
-         internals {:current {}
+   (let [queue (create-queue)
+         _ (a/close! queue) ;; start with a closed queue
+         defaults {:rate 100}
+         internals {:consumer nil
+                    :current {}
                     :port (open-port (or (:port params) "/dev/ttyUSB0"))
-                    :queue (java.util.concurrent.ArrayBlockingQueue. 1)}
+                    :queue queue}
          definition (map->Device (merge defaults params internals))
-         handler (fn [cmd] (.put (:queue definition) cmd))]
+         handler (partial queue-command id)]
      (swap! devices assoc id definition)
      handler)))
+
+
+;; TODO test
+(defn stop
+  ([])
+  ([id]
+   (let [old-queue (:queue (id @devices))]
+     (a/close! old-queue))))
+
+
+;; TODO test
+(defn start
+  ([])
+  ([id]
+   ;; make sure an existing channel is stopped
+   (stop id)
+   ;; create a new channel
+   (swap! devices assoc-in [id :queue] (create-queue))
+   ;; create the consumer
+   (a/go
+    (loop []
+          (let [dev (id @devices)
+                cmd (<!! (:queue dev))]
+            (when (not (nil? cmd))
+              (if (= false (:id cmd))
+                (send-command (:port dev) (:value cmd))
+                (when (not= (get-current id (:id cmd)) (:value cmd))
+                  (swap! devices assoc-in [id :current (:id cmd)] (:value cmd))
+                  (send-command (:port dev) (:value cmd))))
+              (recur)))))))
