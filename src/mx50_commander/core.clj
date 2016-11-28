@@ -1,66 +1,5 @@
 (ns mx50-commander.core
   (:require [clojure.core.async :refer [>! <! >!! <!!] :as a]))
-;;
-;;
-;; (defn- get-device-name [cmd-name]
-;;   (re-find #"^[^-]+" cmd-name))
-;;
-;;
-;; (defn- pad-with-zeros
-;;   [hex-str digits]
-;;   (loop [s hex-str]
-;;    (if (< (count s) digits)
-;;      (recur (str "0" s))
-;;      s)))
-;;
-;;
-;; (defn int-to-hex
-;;   ([value] (int-to-hex value 2))
-;;   ([value digits]
-;;    (-> value
-;;        java.lang.Integer/toHexString
-;;        .toUpperCase
-;;        (pad-with-zeros digits))))
-;;
-;;
-;; (defmacro defdevice
-;;   "Define a port bound to its name."
-;;   [device-name & params]
-;;   (let [defaults {:baud-rate 9600
-;;                   :data-bits 7
-;;                   :stop-bits 1
-;;                   :parity jssc.SerialPort/PARITY_ODD
-;;                   :port "/dev/ttyUSB0"
-;;                   :start-char 0x02
-;;                   :end-char 0x03}
-;;         params-map (merge defaults (apply hash-map params))]
-;;     `(def ~device-name ~(open-port params-map))))
-;;
-;;
-;; (defmacro defcommand
-;;   "Define a function bound to its name which returns a command string which is
-;;    sent to the device derived from the pre - part of the command name
-;;    (ex. mx50 in mx50-neg). This may be overly clever,
-;;    but it makes for a clean DSL."
-;;   [cmd-name arg-list & forms]
-;;   (let [device (-> cmd-name str get-device-name symbol)]
-;;     (list 'defn cmd-name arg-list
-;;           (list command device (cons 'do forms)))))
-;;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 (defrecord Device [consumer current port queue rate])
@@ -81,7 +20,6 @@
 
 
 (defn- send-command
-  "Send command string to dev."
   [port cmd]
   (let [start-char 0x02
         end-char 0x03]
@@ -103,9 +41,6 @@
 (defn queue-command
   ([device-id value] (queue-command device-id value false))
   ([device-id value cmd-id]
-   ;; TODO set the cache. send-command is also a logical place, but that would
-   ;; require passing a more complex data structure through the queue to
-   ;; include the cache-id
    (>!! (get-queue device-id)
         (map->Command {:id cmd-id :value value}))))
 
@@ -177,3 +112,20 @@
    (stop id)
    (swap! devices assoc-in [id :queue] (create-queue))
    (create-consumer id)))
+
+
+;; (defn- pad-with-zeros
+;;   [hex-str digits]
+;;   (loop [s hex-str]
+;;    (if (< (count s) digits)
+;;      (recur (str "0" s))
+;;      s)))
+;;
+;;
+;; (defn int-to-hex
+;;   ([value] (int-to-hex value 2))
+;;   ([value digits]
+;;    (-> value
+;;        java.lang.Integer/toHexString
+;;        .toUpperCase
+;;        (pad-with-zeros digits))))
