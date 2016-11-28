@@ -67,6 +67,7 @@
 
 
 (def devices (atom {}))
+(def device-default-rate 100)
 
 
 (defn- open-port [port]
@@ -80,12 +81,11 @@
 
 
 (defn- send-command
-  "Send command string to device."
-  [device cmd]
+  "Send command string to dev."
+  [port cmd]
   (let [start-char 0x02
         end-char 0x03]
-    (when cmd
-      (.writeBytes device (.getBytes (str start-char cmd end-char))))
+    (.writeBytes port (.getBytes (str start-char cmd end-char)))
     cmd))
 
 
@@ -115,8 +115,11 @@
 
 
 (defn clear-current
-  ([])
-  ([id])
+  ([]
+   (doseq [id (keys @devices)]
+     (clear-current id)))
+  ([id]
+   (swap! devices assoc-in [id :current] {}))
   ([id cmd-id]
    (swap! devices assoc-in [id :current cmd-id] nil)))
 
@@ -127,7 +130,7 @@
   ([id params]
    (let [queue (create-queue)
          _ (a/close! queue) ;; start with a closed queue
-         defaults {:rate 100}
+         defaults {:rate device-default-rate}
          internals {:consumer nil
                     :current {}
                     :port (open-port (or (:port params) "/dev/ttyUSB0"))
@@ -138,31 +141,39 @@
      handler)))
 
 
-;; TODO test
+(defn create-consumer [id]
+  (a/go
+   (loop []
+         (let [dev (id @devices)
+               cmd (<!! (:queue dev))]
+           (when (not (nil? cmd))
+             (if (= false (:id cmd))
+               (do
+                 (send-command (:port dev) (:value cmd))
+                 ;; TODO move this into send-command?
+                 (Thread/sleep (:rate dev)))
+               (when (not= (get-current id (:id cmd)) (:value cmd))
+                 (swap! devices assoc-in [id :current (:id cmd)] (:value cmd))
+                 (send-command (:port dev) (:value cmd))
+                 ;; TODO move this into send-command?
+                 (Thread/sleep (:rate dev))))
+             (recur))))))
+
+
 (defn stop
-  ([])
+  ([]
+   (doseq [id (keys @devices)]
+     (stop id)))
   ([id]
    (let [old-queue (:queue (id @devices))]
      (a/close! old-queue))))
 
 
-;; TODO test
 (defn start
-  ([])
+  ([]
+   (doseq [id (keys @devices)]
+     (start id)))
   ([id]
-   ;; make sure an existing channel is stopped
    (stop id)
-   ;; create a new channel
    (swap! devices assoc-in [id :queue] (create-queue))
-   ;; create the consumer
-   (a/go
-    (loop []
-          (let [dev (id @devices)
-                cmd (<!! (:queue dev))]
-            (when (not (nil? cmd))
-              (if (= false (:id cmd))
-                (send-command (:port dev) (:value cmd))
-                (when (not= (get-current id (:id cmd)) (:value cmd))
-                  (swap! devices assoc-in [id :current (:id cmd)] (:value cmd))
-                  (send-command (:port dev) (:value cmd))))
-              (recur)))))))
+   (create-consumer id)))

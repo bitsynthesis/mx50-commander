@@ -52,8 +52,10 @@
 
 (defn each-fixture [test-fn]
   (reset! cmds-sent [])
+  (reset! mx/devices {})
   (with-redefs [mx/open-port (fn [_] :dummy-port)
-                mx/send-command (fn [_ cmd] (swap! cmds-sent conj cmd))]
+                mx/send-command (fn [_ cmd] (swap! cmds-sent conj cmd))
+                mx/device-default-rate 1]
     (test-fn)))
 
 
@@ -70,8 +72,6 @@
     (is (= {} (:current test-device)))))
 
 
-;; TODO test that queue blocks
-;; TODO rate (delay)
 (deftest queue-commands
   (let [test-id :test-device
         test-cmd-1 "FOOBAR"
@@ -139,17 +139,116 @@
     (is (= test-cmd-2 (mx/get-current test-id test-cmd-id)))))
 
 
-(deftest clear-current
-  (let [test-id :test-device
+(deftest start-stop-all-devices
+  (let [test-device-1 (mx/device :foo)
+        test-device-2 (mx/device :bar)]
+    (test-device-1 "NOPE")
+    (test-device-2 "NOPE")
+    (mx/start)
+    (test-device-1 "YES-1A")
+    (test-device-2 "YES-2A")
+    (mx/stop)
+    (test-device-1 "NOPE")
+    (test-device-2 "NOPE")
+    (mx/start)
+    (test-device-1 "YES-1B")
+    (test-device-2 "YES-2B")
+    (Thread/sleep 100)
+    (is (= (sort ["YES-1A" "YES-2A" "YES-1B" "YES-2B"])
+           (sort @cmds-sent)))))
+
+
+(deftest start-stop-single-device
+  (let [test-device-1 (mx/device :foo)
+        test-device-2 (mx/device :bar)]
+    (mx/start :foo)
+    (test-device-1 "YES-1A")
+    (test-device-2 "NOPE")
+    (mx/start :bar)
+    (test-device-2 "YES-2A")
+    (mx/stop :foo)
+    (test-device-1 "NOPE")
+    (test-device-2 "YES-2B")
+    (Thread/sleep 100)
+    (is (= (sort ["YES-1A" "YES-2A" "YES-2B"])
+           (sort @cmds-sent)))))
+
+
+(deftest clear-current-single-command
+  (let [test-id-1 :test-device-1
+        test-id-2 :test-device-2
+        test-cmd-1 "THIS"
+        test-cmd-2 "THAT"
+        test-cmd-id-1 :zig
+        test-cmd-id-2 :zag
+        test-device-1 (mx/device test-id-1)
+        test-device-2 (mx/device test-id-2)]
+    (mx/start)
+    (test-device-1 test-cmd-1 test-cmd-id-1)
+    (test-device-1 test-cmd-2 test-cmd-id-2)
+    (test-device-2 test-cmd-2 test-cmd-id-2)
+    (Thread/sleep 100)
+    (is (= test-cmd-1 (mx/get-current test-id-1 test-cmd-id-1)))
+    (mx/clear-current test-id-1 test-cmd-id-2)
+    (is (= test-cmd-1 (mx/get-current test-id-1 test-cmd-id-1)))
+    (is (= nil (mx/get-current test-id-1 test-cmd-id-2)))
+    (is (= test-cmd-2 (mx/get-current test-id-2 test-cmd-id-2)))))
+
+
+(deftest clear-current-single-device
+  (let [test-id-1 :test-device-1
+        test-id-2 :test-device-2
+        test-cmd-1 "THIS"
+        test-cmd-2 "THAT"
+        test-cmd-id-1 :zig
+        test-cmd-id-2 :zag
+        test-device-1 (mx/device test-id-1)
+        test-device-2 (mx/device test-id-2)]
+    (mx/start)
+    (test-device-1 test-cmd-1 test-cmd-id-1)
+    (test-device-1 test-cmd-2 test-cmd-id-2)
+    (test-device-2 test-cmd-2 test-cmd-id-2)
+    (Thread/sleep 100)
+    (is (= test-cmd-1 (mx/get-current test-id-1 test-cmd-id-1)))
+    (mx/clear-current test-id-1)
+    (is (= nil (mx/get-current test-id-1 test-cmd-id-1)))
+    (is (= nil (mx/get-current test-id-1 test-cmd-id-2)))
+    (is (= test-cmd-2 (mx/get-current test-id-2 test-cmd-id-2)))))
+
+
+(deftest clear-current-all-devices
+  (let [test-id-1 :test-device-1
+        test-id-2 :test-device-2
         test-cmd-1 "THIS"
         test-cmd-2 "THAT"
         test-cmd-id :zig
-        test-device (mx/device test-id)]
-    (mx/start test-id)
-    (test-device test-cmd-1 test-cmd-id)
-    (is (= test-cmd-1 (mx/get-current test-id test-cmd-id)))
-    (mx/clear-current test-id test-cmd-id)
-    (is (= nil (mx/get-current test-id test-cmd-id)))))
+        test-device-1 (mx/device test-id-1)
+        test-device-2 (mx/device test-id-2)]
+    (mx/start test-id-1)
+    (test-device-1 test-cmd-1 test-cmd-id)
+    (test-device-2 test-cmd-2 test-cmd-id)
+    (Thread/sleep 100)
+    (is (= test-cmd-1 (mx/get-current test-id-1 test-cmd-id)))
+    (mx/clear-current)
+    (is (= nil (mx/get-current test-id-1 test-cmd-id)))
+    (is (= nil (mx/get-current test-id-2 test-cmd-id)))))
 
 
-(deftest start-stop-devices)
+(deftest rate-limit
+  (let [test-id :test-device-1
+        test-rate 100
+        test-device (mx/device test-id {:rate test-rate})
+        num-cmds 10
+        half-expected-time (/ (* test-rate num-cmds) 2)]
+    (mx/start)
+    (future
+     (dotimes [_ num-cmds]
+       (test-device "FOO" false)))
+    (Thread/sleep half-expected-time)
+    (is (<= (count @cmds-sent) (/ num-cmds 2)))
+    (Thread/sleep (+ 100 half-expected-time))
+    (is (= num-cmds (count @cmds-sent)))))
+
+
+;; TODO
+;; - port opening / closing
