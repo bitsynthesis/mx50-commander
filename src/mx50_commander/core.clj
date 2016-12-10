@@ -25,8 +25,8 @@
 
 (defn- send-command
   [port cmd]
-  (let [start-char 0x02
-        end-char 0x03]
+  (let [start-char (char 0x02)
+        end-char (char 0x03)]
     (.writeBytes port (.getBytes (str start-char cmd end-char)))
     cmd))
 
