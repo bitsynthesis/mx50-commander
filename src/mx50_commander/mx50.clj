@@ -2,8 +2,8 @@
 
 
 (defn- pad-with-zeros
-  [hex-str digits]
-  (loop [s hex-str]
+  [value digits]
+  (loop [s (str value)]
    (if (< (count s) digits)
      (recur (str "0" s))
      s)))
@@ -21,7 +21,7 @@
 (defn- restrict-range
   "Limit the range of an integer value. Defaults to 0 - 255."
   ([value] (restrict-range value 0))
-  ([value minimum] (restrict-range value 0 255))
+  ([value minimum] (restrict-range value minimum 255))
   ([value minimum maximum]
    (-> value
        (min maximum)
@@ -75,6 +75,12 @@
           (default-hex-range blue)))
 
 
+(defn color-correct-off
+  "Turn color correct off."
+  [channel]
+  (format "VCC:%sOF" (channel-a-b channel)))
+
+
 (defn color-correct-gain
   "Color correct gain.
 
@@ -86,9 +92,75 @@
           (default-hex-range gain)))
 
 
-(defn wipe-position
-  "Level of wipe lever.
+(defn negative
+  "Negative effect.
+
+   <channel>  :a :b
+   <on-off>   true false"
+  [channel on-off]
+  (format "VDE:%sNG%s"
+          (channel-a-b channel)
+          (if on-off "NN" "FF")))
+
+
+(defn mosaic
+  "Mosaic effect.
+
+   <channel>  :a :b
+   <size>     0 - 30"
+  [channel size]
+  (let [value (if size
+                (-> size (restrict-range 0 30) int-to-hex)
+                "OF")]
+    (format "VDE:%sMS%s"
+            (channel-a-b channel)
+            value)))
+
+
+(defn mono
+  "Mono effect.
+
+   <channel>  :a :b
+   <on-off>   true false"
+  [channel on-off]
+  (format "VDE:%sMN%s" (channel-a-b channel) (if on-off "N" "F")))
+
+
+(defn strobe
+  "Strobe effect.
+
+   <channel>  :a :b
+   <slowness> 0 - 62"
+  [channel slowness]
+  (format "VDE:%sSR%s"
+          (channel-a-b channel)
+          (if slowness
+            (-> slowness (restrict-range 0 62) int-to-hex)
+            "OF")))
+
+
+(defn auto-fade
+  "Execute fade at fixed rate.
+
+   <frames> 0 - 999"
+  [frames]
+  (format "VFA:%s" (-> frames (restrict-range 0 999) (pad-with-zeros 3))))
+
+
+(defn source-select
+  "Select video input.
+
+   <channel>  :a :b
+   <input>    1 - 5"
+  [channel input]
+  (format "VCP:%s%s"
+          (channel-a-b channel)
+          (restrict-range input 1 5)))
+
+
+(defn mix-level
+  "Level of mix lever.
 
    <level> 0 - 255"
   [level]
-  (format "VWP:%s" (default-hex-range level)))
+  (format "VMM:%s" (default-hex-range level)))
