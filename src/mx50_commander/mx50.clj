@@ -1,7 +1,7 @@
 (ns mx50-commander.mx50)
 
 
-(defn- pad-with-zeros
+(defn ^:private pad-with-zeros
   [value digits]
   (loop [s (str value)]
    (if (< (count s) digits)
@@ -9,7 +9,7 @@
      s)))
 
 
-(defn- int-to-hex
+(defn ^:private int-to-hex
   ([value] (int-to-hex value 2))
   ([value digits]
    (-> value
@@ -18,7 +18,7 @@
        (pad-with-zeros digits))))
 
 
-(defn- restrict-range
+(defn ^:private restrict-range
   "Limit the range of an integer value. Defaults to 0 - 255."
   ([value] (restrict-range value 0))
   ([value minimum] (restrict-range value minimum 255))
@@ -28,13 +28,13 @@
        (max minimum))))
 
 
-(defn- default-hex-range
+(defn ^:private default-hex-range
   "Converts integer to nearest 0 - 255 hex value."
   [value]
   (-> value restrict-range int-to-hex))
 
 
-(defn- channel-a-b
+(defn ^:private channel-a-b
   [channel]
   (case channel
     :a "A"
@@ -43,10 +43,11 @@
 
 
 (defn back-color
-  "Background color.
+  "|------|-------------------------------------------------------------|
+   |color | :bars :white :yellow :cyan :green :magenta :red :blue :black|
+   |gain  | 0 - 255                                                     |
 
-   <color>  :bars :white :yellow :cyan :green :magenta :red :blue :black
-   <gain>   0 - 255"
+   Background color."
   [color gain]
   (format "VBC:%s%s"
           (case color
@@ -63,11 +64,12 @@
 
 
 (defn color-correct
-  "Color correct.
+  "|--------|------------|
+   |channel | :a :b :both|
+   |red     | 0 - 255    |
+   |blue    | 0 - 255    |
 
-   <channel>  :a :b :both
-   <red>      0 - 255
-   <blue>     0 - 255"
+   Color correct."
   [channel red blue]
   (format "VCC:%s%s%s"
           (channel-a-b channel)
@@ -82,10 +84,11 @@
 
 
 (defn color-correct-gain
-  "Color correct gain.
+  "|--------|------------|
+   |channel | :a :b :both|
+   |gain    | 0 - 255    |
 
-   <channel>  :a :b :both
-   <gain>     0 - 255"
+   Color correct gain."
   [channel gain]
   (format "VCG:%s%s"
           (channel-a-b channel)
@@ -93,10 +96,11 @@
 
 
 (defn negative
-  "Negative effect.
+  "|--------|-----------|
+   |channel | :a :b     |
+   |on-off  | true false|
 
-   <channel>  :a :b
-   <on-off>   true false"
+   Negative effect."
   [channel on-off]
   (format "VDE:%sNG%s"
           (channel-a-b channel)
@@ -104,10 +108,11 @@
 
 
 (defn mosaic
-  "Mosaic effect.
+  "|--------|-------|
+   |channel | :a :b |
+   |size    | 0 - 30|
 
-   <channel>  :a :b
-   <size>     0 - 30"
+   Mosaic effect."
   [channel size]
   (let [value (if size
                 (-> size (restrict-range 0 30) int-to-hex)
@@ -118,19 +123,21 @@
 
 
 (defn mono
-  "Mono effect.
+  "|--------|-----------|
+   |channel | :a :b     |
+   |on-off  | true false|
 
-   <channel>  :a :b
-   <on-off>   true false"
+   Mono effect."
   [channel on-off]
   (format "VDE:%sMN%s" (channel-a-b channel) (if on-off "N" "F")))
 
 
 (defn strobe
-  "Strobe effect.
+  "|---------|-------|
+   |channel  | :a :b |
+   |slowness | 0 - 62|
 
-   <channel>  :a :b
-   <slowness> 0 - 62"
+   Strobe effect."
   [channel slowness]
   (format "VDE:%sSR%s"
           (channel-a-b channel)
@@ -140,18 +147,20 @@
 
 
 (defn auto-fade
-  "Execute fade at fixed rate.
+  "|-------|--------|
+   |frames | 0 - 999|
 
-   <frames> 0 - 999"
+   Execute fade at fixed rate."
   [frames]
   (format "VFA:%s" (-> frames (restrict-range 0 999) (pad-with-zeros 3))))
 
 
 (defn source-select
-  "Select video input.
+  "|--------|------|
+   |channel | :a :b|
+   |input   | 1 - 5|
 
-   <channel>  :a :b
-   <input>    1 - 5"
+   Select video input."
   [channel input]
   (format "VCP:%s%s"
           (channel-a-b channel)
@@ -159,8 +168,9 @@
 
 
 (defn mix-level
-  "Level of mix lever.
+  "|------|--------|
+   |level | 0 - 255|
 
-   <level> 0 - 255"
+   Level of mix lever."
   [level]
   (format "VMM:%s" (default-hex-range level)))

@@ -9,11 +9,12 @@
 (defrecord Device [consumer current port queue rate])
 
 
+;; TODO make private
 (def devices (atom {}))
-(def device-default-rate 100)
+(def ^:private device-default-rate 100)
 
 
-(defn- open-port [port]
+(defn ^:private open-port [port]
   (let [baud-rate 9600
         data-bits 7
         stop-bits 1
@@ -23,7 +24,7 @@
           (.setParams baud-rate data-bits stop-bits parity))))
 
 
-(defn- send-command
+(defn ^:private send-command
   [port cmd]
   (let [start-char (char 0x02)
         end-char (char 0x03)]
@@ -31,22 +32,22 @@
     cmd))
 
 
-(defn- create-queue []
+(defn ^:private create-queue []
   (a/chan))
 
 
-(defn- get-queue [id]
+(defn ^:private get-queue [id]
   (:queue (id @devices)))
 
 
-(defn- queue-command
+(defn ^:private queue-command
   ([device-id value] (queue-command device-id value false))
   ([device-id value cmd-id]
    (>!! (get-queue device-id)
         (map->Command {:id cmd-id :value value}))))
 
 
-(defn- create-consumer [id]
+(defn ^:private create-consumer [id]
   (a/go
    (loop []
          (let [dev (id @devices)
@@ -65,22 +66,41 @@
              (recur))))))
 
 
-(defn get-current [id cmd-id]
-  (cmd-id (:current (id @devices))))
+(defn get-current
+  "Get the currently cached value of a command.
+
+   |----------|----------------|
+   |device-id | ex. :my-mixer  |
+   |cmd-id    | ex. :back-color|"
+  [device-id cmd-id]
+  (cmd-id (:current (device-id @devices))))
 
 
 (defn clear-current
+  "Clear the cache for all devices, a single device, or a single command
+   for a single device.
+
+   |----------|----------------|
+   |device-id | ex. :my-mixer  |
+   |cmd-id    | ex. :back-color|"
   ([]
-   (doseq [id (keys @devices)]
-     (clear-current id)))
-  ([id]
-   (swap! devices assoc-in [id :current] {}))
-  ([id cmd-id]
-   (swap! devices assoc-in [id :current cmd-id] nil)))
+   (doseq [device-id (keys @devices)]
+     (clear-current device-id)))
+  ([device-id]
+   (swap! devices assoc-in [device-id :current] {}))
+  ([device-id cmd-id]
+   (swap! devices assoc-in [device-id :current cmd-id] nil)))
 
 
+;; TODO
+;; - allow enabling / disabling caching for a device by default
+;; - start new devices automatically when they are defined
 (defn device
-  "Register a device, returning a function to queue commands for execution."
+  "Register a device, returning a function to queue commands for execution.
+
+   |-------|-----------------------------------|
+   |id     | ex. :my-mixer                     |
+   |params | ex. {:port \"/dev/ttyUSB0\" :rate 100}|"
   ([id] (device id {}))
   ([id params]
    (let [queue (create-queue)
@@ -97,6 +117,10 @@
 
 
 (defn stop
+  "Stop sending commands to all devices or a single device.
+
+   |---|--------------|
+   |id | ex. :my-mixer|"
   ([]
    (doseq [id (keys @devices)]
      (stop id)))
@@ -106,6 +130,10 @@
 
 
 (defn start
+  "Start sending commands to all devices or a single device.
+
+   |---|--------------|
+   |id | ex. :my-mixer|"
   ([]
    (doseq [id (keys @devices)]
      (start id)))
@@ -113,20 +141,3 @@
    (stop id)
    (swap! devices assoc-in [id :queue] (create-queue))
    (create-consumer id)))
-
-
-;; (defn- pad-with-zeros
-;;   [hex-str digits]
-;;   (loop [s hex-str]
-;;    (if (< (count s) digits)
-;;      (recur (str "0" s))
-;;      s)))
-;;
-;;
-;; (defn int-to-hex
-;;   ([value] (int-to-hex value 2))
-;;   ([value digits]
-;;    (-> value
-;;        java.lang.Integer/toHexString
-;;        .toUpperCase
-;;        (pad-with-zeros digits))))

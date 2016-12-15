@@ -1,21 +1,10 @@
 (ns mx50-commander.core-test
   (:require [clojure.test :refer :all]
+            [mx50-commander.test-shared :as shared]
             [mx50-commander.core :as mx]))
 
 
-(def cmds-sent (atom []))
-
-
-(defn each-fixture [test-fn]
-  (reset! cmds-sent [])
-  (reset! mx/devices {})
-  (with-redefs [mx/open-port (fn [_] :dummy-port)
-                mx/send-command (fn [_ cmd] (swap! cmds-sent conj cmd))
-                mx/device-default-rate 1]
-    (test-fn)))
-
-
-(use-fixtures :each each-fixture)
+(use-fixtures :each shared/each-fixture)
 
 
 (deftest create-device
@@ -37,7 +26,7 @@
     (test-device test-cmd-1)
     (test-device test-cmd-2)
     (Thread/sleep 100)
-    (is (= [test-cmd-1 test-cmd-2] @cmds-sent))))
+    (is (= [test-cmd-1 test-cmd-2] @shared/cmds-sent))))
 
 
 (deftest filter-duplicate-commands-by-cmd-id
@@ -52,7 +41,7 @@
       (test-device test-cmd-1 test-cmd-id-1)
       (test-device test-cmd-2 test-cmd-id-2))
     (Thread/sleep 100)
-    (is (= 2 (count @cmds-sent)))))
+    (is (= 2 (count @shared/cmds-sent)))))
 
 
 (deftest no-filter-if-cache-disabled
@@ -63,7 +52,7 @@
     (dotimes [_ 10]
       (test-device test-cmd-1 false))
     (Thread/sleep 100)
-    (is (= 10 (count @cmds-sent)))))
+    (is (= 10 (count @shared/cmds-sent)))))
 
 
 (deftest no-filter-changing-commands
@@ -77,7 +66,7 @@
       (test-device test-cmd-1 test-cmd-id)
       (test-device test-cmd-2 test-cmd-id))
     (Thread/sleep 100)
-    (is (= 10 (count @cmds-sent)))))
+    (is (= 10 (count @shared/cmds-sent)))))
 
 
 (deftest get-current
@@ -111,7 +100,7 @@
     (test-device-2 "YES-2B")
     (Thread/sleep 100)
     (is (= (sort ["YES-1A" "YES-2A" "YES-1B" "YES-2B"])
-           (sort @cmds-sent)))))
+           (sort @shared/cmds-sent)))))
 
 
 (deftest start-stop-single-device
@@ -127,7 +116,7 @@
     (test-device-2 "YES-2B")
     (Thread/sleep 100)
     (is (= (sort ["YES-1A" "YES-2A" "YES-2B"])
-           (sort @cmds-sent)))))
+           (sort @shared/cmds-sent)))))
 
 
 (deftest clear-current-single-command
@@ -201,9 +190,9 @@
      (dotimes [_ num-cmds]
        (test-device "FOO" false)))
     (Thread/sleep half-expected-time)
-    (is (<= (count @cmds-sent) (/ num-cmds 2)))
+    (is (<= (count @shared/cmds-sent) (/ num-cmds 2)))
     (Thread/sleep (+ 100 half-expected-time))
-    (is (= num-cmds (count @cmds-sent)))))
+    (is (= num-cmds (count @shared/cmds-sent)))))
 
 
 ;; TODO
