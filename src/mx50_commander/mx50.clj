@@ -20,19 +20,17 @@
 
 
 (defn ^:private restrict-range
-  "Limit the range of an integer value. Defaults to 0 - 255."
-  ([value] (restrict-range value 0))
-  ([value minimum] (restrict-range value minimum 255))
-  ([value minimum maximum]
-   (-> value
-       (min maximum)
-       (max minimum))))
+  "Limit the range of an integer value."
+  [value minimum maximum]
+  (-> value
+      (min maximum)
+      (max minimum)))
 
 
 (defn ^:private default-hex-range
   "Converts integer to nearest 0 - 255 hex value."
   [value]
-  (-> value restrict-range int-to-hex))
+  (-> value (restrict-range 0 255) int-to-hex))
 
 
 (defn ^:private channel-a-b
@@ -43,7 +41,7 @@
     :both "T"))
 
 
-(defn back-color
+(defn back-color-preset
   "|------|-------------------------------------------------------------|
    |color | :bars :white :yellow :cyan :green :magenta :red :blue :black|
    |gain  | 0 - 255                                                     |
@@ -64,18 +62,34 @@
           (default-hex-range gain)))
 
 
+(defn rgb-to-yuv
+  "Returns [y p-b p-r]"
+  [r g b]
+  (mapv int
+        [(+ (* r 0.257) (* g 0.504) (* b 0.098) 16)
+         (+ (* r 0.439) (* g -0.368) (* b -0.071) 128)
+         (+ (* r -0.148) (* g -0.291) (* b 0.439) 128)]))
+
+
+(defn back-color
+  ;; TODO docs
+  [red green blue]
+  (let [[y p-r p-b] (map default-hex-range (rgb-to-yuv red green blue))]
+    (format "VBM:%s%s%s" y p-r p-b)))
+
+
 (defn color-correct
   "|--------|------------|
    |channel | :a :b :both|
-   |red     | 0 - 255    |
-   |blue    | 0 - 255    |
+   |p-r     | 0 - 255    |
+   |p-b     | 0 - 255    |
 
    Color correct."
-  [channel red blue]
+  [channel p-r p-b]
   (format "VCC:%s%s%s"
           (channel-a-b channel)
-          (default-hex-range red)
-          (default-hex-range blue)))
+          (default-hex-range p-r)
+          (default-hex-range p-b)))
 
 
 (defn color-correct-off
@@ -156,16 +170,18 @@
   (format "VFA:%s" (-> frames (restrict-range 0 999) (pad-with-zeros 3))))
 
 
-(defn source-select
-  "|--------|------|
-   |channel | :a :b|
-   |input   | 1 - 5|
+(defn input
+  "|--------|--------------|
+   |channel | :a :b        |
+   |input   | 1 - 4, :matte|
 
    Select video input."
   [channel input]
   (format "VCP:%s%s"
           (channel-a-b channel)
-          (restrict-range input 1 5)))
+          (if (= :matte input)
+            "C"
+            (restrict-range input 1 4))))
 
 
 (defn mix-level
@@ -226,3 +242,44 @@
   ;; TODO docs
   [on-off]
   (format "VWD:X%s" (if on-off "N" "F")))
+
+
+(defn fade
+  ;; TODO docs
+  [fade-to video-on-off dsk-on-off audio-on-off]
+  ;; TODO matte
+  (let [fade-code {:white "W" :black "L"}]
+    (format "VFD:%s%s%s%s"
+            (fade-code fade-to)
+            (if video-on-off "V" "F")
+            (if dsk-on-off "T" "F")
+            (if audio-on-off "A" "F"))))
+
+
+(defn fade-manual
+  ;; TODO docs
+  [level]
+  (format "VFM:%s" (-> level (restrict-range 0 255) int-to-hex)))
+
+
+(defn fade-auto
+  ;; TODO docs
+  [duration]
+  (format "VFA:%s" (-> duration (restrict-range 0 999) (pad-with-zeros 3))))
+
+
+(defn multi
+  ;; TODO docs
+  ([channel panes] (multi channel panes :repeat 0))
+  ([channel panes mode] (multi channel panes mode 0))
+  ([channel panes mode speed]
+  (let [mode-code {:once "N" :repeat "R"}
+        pane-code {1 "F"
+                   4 "1"
+                   9 "2"
+                   16 "3"}]
+    (format "VDM:%s%s%s%s"
+            (channel-a-b channel)
+            (pane-code panes)
+            (mode-code mode)
+            (-> speed (restrict-range 0 62) int-to-hex)))))
