@@ -2,11 +2,12 @@
 
 
 (defn ^:private pad-with-zeros
-  [value digits]
-  (loop [s (str value)]
-   (if (< (count s) digits)
-     (recur (str "0" s))
-     s)))
+  ([value] (pad-with-zeros value 2))
+  ([value digits]
+   (loop [s (str value)]
+         (if (< (count s) digits)
+           (recur (str "0" s))
+           s))))
 
 
 (defn ^:private int-to-hex
@@ -174,3 +175,54 @@
    Level of mix lever."
   [level]
   (format "VMM:%s" (default-hex-range level)))
+
+
+(defn wipe-pattern
+  ;; TODO docs
+  [button pattern modifier]
+  (let [button-root [1 5 16 20 9 24 12]
+        modifier-code {:none "MLF"
+                       :compression "ZM1"
+                       :compression2 "ZM2"
+                       :slide "SC1"
+                       :slide2 "SC2"
+                       :pairing
+                       :blinds
+                       :multi "ML1"
+                       :multi2 "ML2"
+                       :multi3 "ML3"
+                       :multi4 "ML4"
+                       :multi5 "ML5"
+                       :multi6 "ML6"
+                       :multi-pairing "MP1"
+                       :multi-pairing2 "MP2"
+                       :multi-pairing3 "MP3"
+                       :multi-pairing4 "MP4"
+                       :multi-pairing5 "MP5"
+                       :multi-pairing6 "MP6"}]
+    (format "VWP:%s%s"
+            (-> button button-root (+ pattern) (restrict-range 0 27) pad-with-zeros)
+            (modifier-code modifier))))
+
+
+(defn wipe-border
+  ;; TODO docs
+  [border]
+  (let [border-code {:none "OF"
+                     :border "B1"
+                     :border2 "B2"
+                     :soft "S1"
+                     :soft2 "S2"}]
+    (format "VWB:%s" (border-code border))))
+
+
+(defn wipe-reverse
+  ;; TODO docs
+  [on-off]
+  (format "VWD:%sX" (if on-off "N" "F")))
+
+
+(defn wipe-one-way
+  ;; TODO docs
+  [on-off]
+  (format "VWD:X%s" (if on-off "N" "F")))
