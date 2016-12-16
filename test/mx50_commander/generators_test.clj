@@ -33,13 +33,15 @@
 (deftest do-generate
   (let [test-id :test-device-1
         test-device (core/device test-id)]
+    (core/start test-id)
     (gen/do-generate [r (range 255)
                       b (range 127)
                       :type gen/linear
                       :steps 4]
       (test-device (mx/color-correct :b r b)))
-    (is (= ["VCC:B00"
-            "VCC:B00"
-            "VCC:B00"
-            "VCC:B00"]
+    (Thread/sleep 100)
+    (is (= ["VCC:B0000"
+            "VCC:B552A"
+            "VCC:BA954"
+            "VCC:BFE7E"]
            @shared/cmds-sent))))

@@ -33,11 +33,11 @@
    num-steps, as calculated by the generator function which takes num-steps,
    step, and a collection of values."
   [generator num-steps collections]
-  (for [s (range num-steps)]
-       (for [c collections]
-            (if (sequential? c)
-              (generator num-steps s (vec c))
-              c))))
+  (vec (for [s (range num-steps)]
+            (vec (for [c collections]
+                      (if (sequential? c)
+                        (generator num-steps s (vec c))
+                        c))))))
 
 
 ;; TODO make private
@@ -56,34 +56,13 @@
 
 (defmacro do-generate
   [bindings & body]
-  ;; filter symbol bindings from keyword keys
   (let [gen-config (filter-bindings keyword? bindings)
         cmd-params (filter-bindings symbol? bindings)
-        generator (:type gen-config)]
-
-    ;; generate values of all symbol bindings by type
-
-    `(for [step# (~generator ~(:steps gen-config) ~@(vals cmd-params))]
-          (let [step-keys# ~(map name (keys @cmd-params))]
-            (println step#)))
-
-
-
-
-    ;; (println "GENERATIN")
-    ;; (list 'let [steps# (list 'apply
-    ;;                             (list 'partial generator
-    ;;                                   (:steps gen-config))
-    ;;                             (cons 'list (vals cmd-params)))]
-    ;;       (list 'for [i (range (count steps#))]
-    ;;             [(keys cmd-params) (get steps# i)]))
-    ;;
-
-    ;; for each step
-    ;;   associate the step values with original binding symbols
-    ;;   execute the body with those bindings
-
-    ))
+        generator (:type gen-config)
+        num-steps (:steps gen-config)]
+    `(let [steps# (~generator ~num-steps ~@(vals cmd-params))]
+       (doseq [s# steps#]
+         (apply (fn ~(vec (keys cmd-params)) ~@body) s#)))))
 
 
 (defn curve
@@ -105,5 +84,4 @@
    Returns the appropriate value from the collection corresponding to a linear
    progression of steps."
   [num-steps & collections]
-  (println "THEY CALLIN ME")
   (generate get-linear num-steps collections))
