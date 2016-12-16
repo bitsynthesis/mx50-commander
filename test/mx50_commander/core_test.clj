@@ -11,7 +11,7 @@
   (let [test-rate 200
         test-id :mx50-test
         _ (core/device test-id {:port "/dev/ttyUSB666" :rate test-rate})
-        test-device (test-id @core/devices)]
+        test-device (test-id @@#'core/devices)]
     (is (= :dummy-port (:port test-device)))
     (is (= test-rate (:rate test-device)))
     (is (= {} (:current test-device)))))

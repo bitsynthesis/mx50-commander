@@ -1,4 +1,4 @@
-(ns mx50-commander.generators
+(ns mx50-commander.generate
   (:import java.lang.Math))
 
 
@@ -28,7 +28,7 @@
         collection)))
 
 
-(defn ^:private generate
+(defn ^:private generate-steps
   "Returns the appropriate value from the collection for the given step out of
    num-steps, as calculated by the generator function which takes num-steps,
    step, and a collection of values."
@@ -40,30 +40,13 @@
                         c))))))
 
 
-;; TODO make private
-(defn filter-bindings
+(defn ^:private filter-bindings
   [matcher bindings]
   (->> bindings
        (partition 2)
        (map vec)
        (filter (comp matcher first))
        (into (sorted-map))))
-
-
-(defn re-bind [cmd-params step]
-  (into [] (apply concat (map vector (keys cmd-params) step))))
-
-
-(defmacro do-generate
-  ;; TODO docstring, name? should just be generate?
-  [bindings & body]
-  (let [gen-config (filter-bindings keyword? bindings)
-        cmd-params (filter-bindings symbol? bindings)
-        generator (:type gen-config)
-        num-steps (:steps gen-config)]
-    `(let [steps# (~generator ~num-steps ~@(vals cmd-params))]
-       (doseq [s# steps#]
-         (apply (fn ~(vec (keys cmd-params)) ~@body) s#)))))
 
 
 (defn curve
@@ -74,7 +57,7 @@
    Returns the appropriate value from the collection corresponding to a
    quadratic progression of steps."
   [num-steps & collections]
-  (generate get-curve num-steps collections))
+  (generate-steps get-curve num-steps collections))
 
 
 (defn linear
@@ -85,4 +68,30 @@
    Returns the appropriate value from the collection corresponding to a linear
    progression of steps."
   [num-steps & collections]
-  (generate get-linear num-steps collections))
+  (generate-steps get-linear num-steps collections))
+
+
+(defmacro generate
+  ;; TODO docs
+  "|----------|-------------------|
+   | bindings | see below         |
+   | body     | any clojure forms |
+
+   ```
+   (generate [color  [:red :blue :green]
+              gain   (range 127 255)
+              level  (range 255)
+              :type  linear
+              :steps 30]
+     (my-device (back-color-preset color gain))
+     (my-device (fade-level level)))
+   ```
+   "
+  [bindings & body]
+  (let [gen-config (filter-bindings keyword? bindings)
+        cmd-params (filter-bindings symbol? bindings)
+        generator (:type gen-config)
+        num-steps (:steps gen-config)]
+    `(let [steps# (~generator ~num-steps ~@(vals cmd-params))]
+       (doseq [s# steps#]
+         (apply (fn ~(vec (keys cmd-params)) ~@body) s#)))))

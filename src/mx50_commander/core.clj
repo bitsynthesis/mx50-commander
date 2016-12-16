@@ -9,8 +9,7 @@
 (defrecord Device [consumer current port queue rate])
 
 
-;; TODO make private
-(def devices (atom {}))
+(def ^:private devices (atom {}))
 (def ^:private device-default-rate 100)
 
 

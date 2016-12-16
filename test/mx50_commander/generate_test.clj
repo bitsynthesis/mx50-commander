@@ -1,8 +1,8 @@
-(ns mx50-commander.generators-test
+(ns mx50-commander.generate-test
   (:require [clojure.test :refer :all]
             [mx50-commander.core :as core]
-            [mx50-commander.generators :as gen]
-            [mx50-commander.mx50 :as mx]
+            [mx50-commander.generate :as gen]
+            [mx50-commander.command :as cmd]
             [mx50-commander.test-shared :as shared]))
 
 
@@ -27,18 +27,18 @@
 
 (deftest filter-bindings
   (is (= {:a 1 :b 'str}
-         (gen/filter-bindings keyword? '('x 123 :a 1 'y 456 :b str)))))
+         (#'gen/filter-bindings keyword? '('x 123 :a 1 'y 456 :b str)))))
 
 
-(deftest do-generate
+(deftest generate
   (let [test-id :test-device-1
         test-device (core/device test-id)]
     (core/start test-id)
-    (gen/do-generate [r (range 255)
-                      b (range 127)
-                      :type gen/linear
-                      :steps 4]
-      (test-device (mx/color-correct :b r b)))
+    (gen/generate [r (range 255)
+                   b (range 127)
+                   :type gen/linear
+                   :steps 4]
+      (test-device (cmd/color-correct :b r b)))
     (Thread/sleep 100)
     (is (= ["VCC:B0000"
             "VCC:B552A"
