@@ -55,6 +55,7 @@
 
 
 (defmacro do-generate
+  ;; TODO docstring, name? should just be generate?
   [bindings & body]
   (let [gen-config (filter-bindings keyword? bindings)
         cmd-params (filter-bindings symbol? bindings)

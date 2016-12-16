@@ -173,22 +173,22 @@
 (defn input
   "|--------|--------------|
    |channel | :a :b        |
-   |input   | 1 - 4, :matte|
+   |input   | 0 (matte) - 4|
 
    Select video input."
   [channel input]
   (format "VCP:%s%s"
           (channel-a-b channel)
-          (if (= :matte input)
+          (if (zero? input)
             "C"
             (restrict-range input 1 4))))
 
 
-(defn mix-level
+(defn wipe
   "|------|--------|
    |level | 0 - 255|
 
-   Level of mix lever."
+   Position of wipe lever."
   [level]
   (format "VMM:%s" (default-hex-range level)))
 
