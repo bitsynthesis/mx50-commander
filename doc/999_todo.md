@@ -7,3 +7,4 @@
 * hsl-to-rgb helper
   - http://www.rapidtables.com/convert/color/hsl-to-rgb.htm
 * more curve generators
+* power toggle command

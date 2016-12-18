@@ -66,22 +66,22 @@
 
 
 (defn get-current
-  "Get the currently cached value of a command.
+  "|-----------|-----------------|
+   | device-id | ex. :my-mixer   |
+   | cmd-id    | ex. :back-color |
 
-   |----------|----------------|
-   |device-id | ex. :my-mixer  |
-   |cmd-id    | ex. :back-color|"
+   Get the currently cached value of a command."
   [device-id cmd-id]
   (cmd-id (:current (device-id @devices))))
 
 
 (defn clear-current
-  "Clear the cache for all devices, a single device, or a single command
-   for a single device.
+  "|-----------|-----------------|
+   | device-id | ex. :my-mixer   |
+   | cmd-id    | ex. :back-color |
 
-   |----------|----------------|
-   |device-id | ex. :my-mixer  |
-   |cmd-id    | ex. :back-color|"
+   Clear the cache for all devices, a single device, or a single command
+   for a single device."
   ([]
    (doseq [device-id (keys @devices)]
      (clear-current device-id)))
@@ -91,15 +91,43 @@
    (swap! devices assoc-in [device-id :current cmd-id] nil)))
 
 
+(defn stop
+  "|----|---------------|
+   | id | ex. :my-mixer |
+
+   Stop sending commands to all devices or a single device."
+  ([]
+   (doseq [id (keys @devices)]
+     (stop id)))
+  ([id]
+   (let [old-queue (:queue (id @devices))]
+     (a/close! old-queue))))
+
+
+(defn start
+  "|----|---------------|
+   | id | ex. :my-mixer |
+
+   Start sending commands to all devices or a single device."
+  ([]
+   (doseq [id (keys @devices)]
+     (start id)))
+  ([id]
+   (stop id)
+   (swap! devices assoc-in [id :queue] (create-queue))
+   (create-consumer id)))
+
+
 ;; TODO
 ;; - allow enabling / disabling caching for a device by default
-;; - start new devices automatically when they are defined
+;; - test starting of devices on definition
 (defn device
-  "Register a device, returning a function to queue commands for execution.
+  "|--------|----------------------------------------|
+   | id     | ex. :my-mixer                          |
+   | params | ex. {:port \"/dev/ttyUSB0\" :rate 100} |
 
-   |-------|-----------------------------------|
-   |id     | ex. :my-mixer                     |
-   |params | ex. {:port \"/dev/ttyUSB0\" :rate 100}|"
+   Register a device and start it, return a function to queue commands
+   for execution."
   ([id] (device id {}))
   ([id params]
    (let [queue (create-queue)
@@ -112,31 +140,5 @@
          definition (map->Device (merge defaults params internals))
          handler (partial queue-command id)]
      (swap! devices assoc id definition)
+     (start id)
      handler)))
-
-
-(defn stop
-  "Stop sending commands to all devices or a single device.
-
-   |---|--------------|
-   |id | ex. :my-mixer|"
-  ([]
-   (doseq [id (keys @devices)]
-     (stop id)))
-  ([id]
-   (let [old-queue (:queue (id @devices))]
-     (a/close! old-queue))))
-
-
-(defn start
-  "Start sending commands to all devices or a single device.
-
-   |---|--------------|
-   |id | ex. :my-mixer|"
-  ([]
-   (doseq [id (keys @devices)]
-     (start id)))
-  ([id]
-   (stop id)
-   (swap! devices assoc-in [id :queue] (create-queue))
-   (create-consumer id)))

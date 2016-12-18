@@ -5,8 +5,8 @@
 
 
 (def ^:private channel-code
-  {:a "A"
-   :b "B"
+  {:a    "A"
+   :b    "B"
    :both "T"})
 
 
@@ -18,7 +18,7 @@
 
    Set background matte color using RGB instead of the native YPbPr."
   [red green blue]
-  (let [[y p-r p-b] (map default-hex-range (rgb-to-ypbpr red green blue))]
+  (let [[y p-b p-r] (map default-hex-range (rgb-to-ypbpr red green blue))]
     (format "VBM:%s%s%s" y p-r p-b)))
 
 
@@ -42,21 +42,22 @@
             (default-hex-range gain))))
 
 
-;; TODO rgb instead... maybe in conjunction with cc gain
 (defn color-correct
-  "|---------|-------------|
-   | channel | :a :b :both |
-   | p-r     | 0 - 255     |
-   | p-b     | 0 - 255     |
-   "
-  [channel p-r p-b]
-  (format "VCC:%s%s%s"
-          (channel-code channel)
-          (default-hex-range p-r)
-          (default-hex-range p-b)))
+  "|---------|-------------|------------------------|
+   | channel | :a :b :both |                        |
+   | red     | 0 - 255     | value of red channel   |
+   | green   | 0 - 255     | value of green channel |
+   | blue    | 0 - 255     | value of blue channel  |
+
+   Set color correct joystick position."
+  [channel r g b]
+  (let [[_ p-b p-r] (rgb-to-ypbpr r g b)]
+    (format "VCC:%s%s%s"
+            (channel-code channel)
+            (default-hex-range p-b)
+            (default-hex-range p-r))))
 
 
-;; TODO this may just be <y> of CC <p-r> <p-b>
 (defn color-correct-gain
   "|---------|-------------|
    | channel | :a :b :both |
@@ -77,6 +78,42 @@
   (format "VCC:%sOF" (channel-code channel)))
 
 
+(defn fade
+  "|----------|---------|------------------|
+   | duration | 0 - 999 | number of frames |
+
+   Start an automatic fade with the given duration in frames."
+  [duration]
+  (format "VFA:%s" (-> duration (restrict-range 0 999) (zero-pad 3))))
+
+
+(defn fade-level
+  "|-------|---------|---------------------|
+   | level | 0 - 255 | 0 = off, 255 = full |
+
+   Level of manual fade slider."
+  [level]
+  (format "VFM:%s" (default-hex-range level)))
+
+
+(defn fade-settings
+  "|--------------|---------------|------------------------------|
+   | fade-to      | :white :black | matte source to fade to      |
+   | video-on-off | true false    | enable video fading          |
+   | dsk-on-off   | true false    | enable downstream key fading |
+   | audio-on-off | true false    | enable audio fading          |
+
+   Configure fade settings."
+  [fade-to video-on-off dsk-on-off audio-on-off]
+  ;; TODO matte
+  (let [fade-code {:white "W" :black "L"}]
+    (format "VFD:%s%s%s%s"
+            (fade-code fade-to)
+            (if video-on-off "V" "F")
+            (if dsk-on-off "T" "F")
+            (if audio-on-off "A" "F"))))
+
+
 (defn fx-mono
   "|---------|------------|--------------------|
    | channel | :a :b      |                    |
@@ -87,9 +124,9 @@
 
 
 (defn fx-mosaic
-  "|---------|--------|----------------|
-   | channel | :a :b  |                |
-   | size    | 0 - 30 | size of blocks |
+  "|---------|--------------|----------------|
+   | channel | :a :b        |                |
+   | size    | 0 - 30 false | size of blocks |
    "
   [channel size]
   (let [value (if size
@@ -111,15 +148,14 @@
   ([channel panes] (fx-multi channel panes true 0))
   ([channel panes once] (fx-multi channel panes once 0))
   ([channel panes once speed]
-   (let [once-code {:once "N" :repeat "R"}
-         pane-code {1 "F"
-                    4 "1"
-                    9 "2"
+   (let [pane-code {1  "F"
+                    4  "1"
+                    9  "2"
                     16 "3"}]
      (format "VDM:%s%s%s%s"
              (channel-code channel)
              (pane-code panes)
-             (once-code once)
+             (if once "N" "R")
              (-> speed (restrict-range 0 62) int-to-hex)))))
 
 
@@ -135,9 +171,9 @@
 
 
 (defn fx-strobe
-  "|----------|--------|--------------------------------|
-   | channel  | :a :b  |                                |
-   | slowness | 0 - 62 | delay between frames in frames |
+  "|----------|--------------|--------------------------------|
+   | channel  | :a :b        |                                |
+   | slowness | 0 - 62 false | delay between frames in frames |
    "
   [channel slowness]
   (format "VDE:%sSR%s"
@@ -175,11 +211,11 @@
    | border | :none :border :border2 :soft :soft2 | type of border |
    "
   [border]
-  (let [border-code {:none "OF"
-                     :border "B1"
+  (let [border-code {:none    "OF"
+                     :border  "B1"
                      :border2 "B2"
-                     :soft "S1"
-                     :soft2 "S2"}]
+                     :soft    "S1"
+                     :soft2   "S2"}]
     (format "VWB:%s" (border-code border))))
 
 
@@ -208,20 +244,20 @@
    "
   [button pattern modifier]
   (let [button-root [1 5 16 20 9 24 12]
-        modifier-code {:none "MLF"
-                       :compression "ZM1"
-                       :compression2 "ZM2"
-                       :slide "SC1"
-                       :slide2 "SC2"
+        modifier-code {:none           "MLF"
+                       :compression    "ZM1"
+                       :compression2   "ZM2"
+                       :slide          "SC1"
+                       :slide2         "SC2"
                        :pairing
                        :blinds
-                       :multi "ML1"
-                       :multi2 "ML2"
-                       :multi3 "ML3"
-                       :multi4 "ML4"
-                       :multi5 "ML5"
-                       :multi6 "ML6"
-                       :multi-pairing "MP1"
+                       :multi          "ML1"
+                       :multi2         "ML2"
+                       :multi3         "ML3"
+                       :multi4         "ML4"
+                       :multi5         "ML5"
+                       :multi6         "ML6"
+                       :multi-pairing  "MP1"
                        :multi-pairing2 "MP2"
                        :multi-pairing3 "MP3"
                        :multi-pairing4 "MP4"
@@ -238,39 +274,3 @@
    "
   [on-off]
   (format "VWD:%sX" (if on-off "N" "F")))
-
-
-(defn fade
-  "|----------|---------|------------------|
-   | duration | 0 - 999 | number of frames |
-
-   Start an automatic fade with the given duration in frames."
-  [duration]
-  (format "VFA:%s" (-> duration (restrict-range 0 999) (zero-pad 3))))
-
-
-(defn fade-level
-  "|-------|---------|---------------------|
-   | level | 0 - 255 | 0 = off, 255 = full |
-
-   Level of manual fade slider."
-  [level]
-  (format "VFM:%s" (default-hex-range level)))
-
-
-(defn fade-settings
-  "|--------------|---------------|------------------------------|
-   | fade-to      | :white :black | matte source to fade to      |
-   | video-on-off | true false    | enable video fading          |
-   | dsk-on-off   | true false    | enable downstream key fading |
-   | audio-on-off | true false    | enable audio fading          |
-
-   Configure fade settings."
-  [fade-to video-on-off dsk-on-off audio-on-off]
-  ;; TODO matte
-  (let [fade-code {:white "W" :black "L"}]
-    (format "VFD:%s%s%s%s"
-            (fade-code fade-to)
-            (if video-on-off "V" "F")
-            (if dsk-on-off "T" "F")
-            (if audio-on-off "A" "F"))))
