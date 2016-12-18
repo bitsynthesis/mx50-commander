@@ -1,5 +1,13 @@
 (ns mx50-commander.command
+  "A human friendly interface over the MX50 RS232 command spec.
+   These functions create command strings to send to the video mixer."
   (:require [mx50-commander.convert :refer :all]))
+
+
+(def ^:private channel-code
+  {:a "A"
+   :b "B"
+   :both "T"})
 
 
 (defn back-color
@@ -8,8 +16,7 @@
    | green | 0 - 255 | value of green channel |
    | blue  | 0 - 255 | value of blue channel  |
 
-   Set background matte color using RGB instead of the native YPbPr.
-   "
+   Set background matte color using RGB instead of the native YPbPr."
   [red green blue]
   (let [[y p-r p-b] (map default-hex-range (rgb-to-ypbpr red green blue))]
     (format "VBM:%s%s%s" y p-r p-b)))
@@ -21,18 +28,18 @@
    | gain  | 0 - 255                                                      |
    "
   [color gain]
-  (format "VBC:%s%s"
-          (case color
-            :bars     "CB"
-            :white    "WH"
-            :yellow   "YL"
-            :cyan     "CY"
-            :green    "GR"
-            :magenta  "MG"
-            :red      "RD"
-            :blue     "BU"
-            :black    "BL")
-          (default-hex-range gain)))
+  (let [color-code {:bars    "CB"
+                    :white   "WH"
+                    :yellow  "YL"
+                    :cyan    "CY"
+                    :green   "GR"
+                    :magenta "MG"
+                    :red     "RD"
+                    :blue    "BU"
+                    :black   "BL"}]
+    (format "VBC:%s%s"
+            (color-code color)
+            (default-hex-range gain))))
 
 
 ;; TODO rgb instead... maybe in conjunction with cc gain
@@ -44,7 +51,7 @@
    "
   [channel p-r p-b]
   (format "VCC:%s%s%s"
-          (channel-a-b channel)
+          (channel-code channel)
           (default-hex-range p-r)
           (default-hex-range p-b)))
 
@@ -57,7 +64,7 @@
    "
   [channel gain]
   (format "VCG:%s%s"
-          (channel-a-b channel)
+          (channel-code channel)
           (default-hex-range gain)))
 
 
@@ -67,7 +74,7 @@
 
    Turn color correct off."
   [channel]
-  (format "VCC:%sOF" (channel-a-b channel)))
+  (format "VCC:%sOF" (channel-code channel)))
 
 
 (defn fx-mono
@@ -76,7 +83,7 @@
    | on-off  | true false | enable mono effect |
    "
   [channel on-off]
-  (format "VDE:%sMN%s" (channel-a-b channel) (if on-off "N" "F")))
+  (format "VDE:%sMN%s" (channel-code channel) (if on-off "N" "F")))
 
 
 (defn fx-mosaic
@@ -89,7 +96,7 @@
                 (-> size (restrict-range 0 30) int-to-hex)
                 "OF")]
     (format "VDE:%sMS%s"
-            (channel-a-b channel)
+            (channel-code channel)
             value)))
 
 
@@ -110,7 +117,7 @@
                     9 "2"
                     16 "3"}]
      (format "VDM:%s%s%s%s"
-             (channel-a-b channel)
+             (channel-code channel)
              (pane-code panes)
              (once-code once)
              (-> speed (restrict-range 0 62) int-to-hex)))))
@@ -123,7 +130,7 @@
    "
   [channel on-off]
   (format "VDE:%sNG%s"
-          (channel-a-b channel)
+          (channel-code channel)
           (if on-off "NN" "FF")))
 
 
@@ -134,7 +141,7 @@
    "
   [channel slowness]
   (format "VDE:%sSR%s"
-          (channel-a-b channel)
+          (channel-code channel)
           (if slowness
             (-> slowness (restrict-range 0 62) int-to-hex)
             "OF")))
@@ -148,7 +155,7 @@
    Select video input."
   [channel input]
   (format "VCP:%s%s"
-          (channel-a-b channel)
+          (channel-code channel)
           (if (zero? input)
             "C"
             (restrict-range input 1 4))))
@@ -160,7 +167,7 @@
 
    Start an automatic wipe with the given duration in frames."
   [duration]
-  (format "VMA:%s" (-> duration (restrict-range 0 999) (pad-with-zeros 3))))
+  (format "VMA:%s" (-> duration (restrict-range 0 999) (zero-pad 3))))
 
 
 (defn wipe-border
@@ -221,7 +228,7 @@
                        :multi-pairing5 "MP5"
                        :multi-pairing6 "MP6"}]
     (format "VWP:%s%s"
-            (-> button button-root (+ pattern) (restrict-range 0 27) pad-with-zeros)
+            (-> button button-root (+ pattern) (restrict-range 0 27) zero-pad)
             (modifier-code modifier))))
 
 
@@ -239,7 +246,7 @@
 
    Start an automatic fade with the given duration in frames."
   [duration]
-  (format "VFA:%s" (-> duration (restrict-range 0 999) (pad-with-zeros 3))))
+  (format "VFA:%s" (-> duration (restrict-range 0 999) (zero-pad 3))))
 
 
 (defn fade-level

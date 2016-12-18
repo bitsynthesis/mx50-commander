@@ -12,13 +12,16 @@
          '[codox.boot :refer [codox]])
 
 
+(def version "0.1")
+
+
 (deftask test []
   (boot-test/test))
 
 
 (deftask doc []
   (comp (codox :name "MX50 Commander"
-               :version "2.1"
+               :version version
                :description "
 A Clojure library for controlling Panasonic WJ-MX50 and WJ-MX30 video mixers
 via USB serial port adapter."
@@ -31,6 +34,6 @@ via USB serial port adapter."
 (deftask build []
   (comp (aot :namespace #{'mx50-commander.core})
         (pom :project 'bbakersmith/mx50-commander
-             :version "2.1")
+             :version version)
         (jar :main 'mx50-commander.core)
         (install)))

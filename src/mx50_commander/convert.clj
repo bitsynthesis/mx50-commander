@@ -1,13 +1,17 @@
 (ns mx50-commander.convert
-  "Helper functions for converting between color and number formats.
-   These helpers are primarily utilized by the functions in `mx50-commander.command`,
-   but are made available for projects which require more granular control."
+  "Functions for converting between color and number formats. These helpers are
+   primarily utilized by the functions in `mx50-commander.command`, but are made
+   available for projects which require more granular control."
   (:import java.lang.Math))
 
 
-(defn pad-with-zeros
-  ;; TODO docs
-  ([value] (pad-with-zeros value 2))
+(defn zero-pad
+  "|--------|-------------------|------------------------------------|
+   | value  | string or integer | value to pad                       |
+   | digits | positive integer  | minimum number of digits to pad to |
+
+   Convert a value to a zero padded string with a fixed number of digits."
+  ([value] (zero-pad value 2))
   ([value digits]
    (loop [s (str value)]
      (if (< (count s) digits)
@@ -16,17 +20,16 @@
 
 
 (defn int-to-hex
-  ;; TODO docs
+  "Convert an integer to a hex string of a fixed number of digits."
   ([value] (int-to-hex value 2))
   ([value digits]
    (-> value
        java.lang.Integer/toHexString
        .toUpperCase
-       (pad-with-zeros digits))))
+       (zero-pad digits))))
 
 
 (defn restrict-range
-  ;; TODO docs
   "Limit the range of an integer value."
   [value minimum maximum]
   (-> value
@@ -35,24 +38,18 @@
 
 
 (defn default-hex-range
-  ;; TODO docs
-  "Converts integer to nearest 0 - 255 hex value."
+  "Convert an integer to nearest two digit 00 - FF hex string."
   [value]
   (-> value (restrict-range 0 255) int-to-hex))
 
 
-(defn channel-a-b
-  ;; TODO docs
-  [channel]
-  (case channel
-    :a "A"
-    :b "B"
-    :both "T"))
-
-
 (defn rgb-to-ypbpr
-  ;; TODO docs
-  "Returns [y p-b p-r]"
+  "|---|---------|---------------------|
+   | r | 0 - 255 | red channel value   |
+   | g | 0 - 255 | green channel value |
+   | b | 0 - 255 | blue channel value  |
+
+   Convert RGB color to YPbPr."
   [r g b]
   (mapv int
         [(+ (* r 0.257) (* g 0.504) (* b 0.098) 16)
@@ -67,14 +64,14 @@
 
 
 (defn hsl-to-rgb
-  ;; TODO docs
   "|---|---------|-----------------------|
    | h | 0 - 360 | hue in degrees        |
    | s | 0 - 100 | saturation in percent |
    | l | 0 - 100 | lightness in percent  |
 
    http://www.rapidtables.com/convert/color/hsl-to-rgb.htm
-   "
+
+   Convert YPbPr color to RGB."
   [h s l]
   (let [h_ (restrict-range h 0 360)
         s_ (/ (restrict-range s 0 100) 100)
