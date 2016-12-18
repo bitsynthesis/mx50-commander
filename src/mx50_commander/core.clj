@@ -39,11 +39,51 @@
   (:queue (id @devices)))
 
 
+(def ^:private cache-keys
+  {:back-color         "VBM"
+   :back-color-preset  "VBC"
+   :color-correct      "VCC"
+   :color-correct-gain "VCG"
+   :fade               "VFA"
+   :fade-level         "VFM"
+   :fade-settings      "VFD"
+   :fx-mono-a          "VDE:AMN"
+   :fx-mono-b          "VDE:BMN"
+   :fx-mosaic-a        "VDE:AMS"
+   :fx-mosaic-b        "VDE:BMS"
+   :fx-multi-a         "VDM:A"
+   :fx-multi-b         "VDM:B"
+   :fx-negative-a      "VDE:ANG"
+   :fx-negative-b      "VDE:BNG"
+   :fx-strobe-a        "VDE:ASR"
+   :fx-strobe-b        "VDE:BSR"
+   :input-a            "VCP:A"
+   :input-b            "VCP:B"
+   :wipe               "VMA"
+   :wipe-border        "VWB"
+   :wipe-level         "VMM"
+   :wipe-one-way       "VWD:X"
+   :wipe-pattern       "VWP"
+   :wipe-reverse       "VWD:[NF]X"})
+
+
+(defn ^:private cache-key-lookup
+  [cmd [k matcher]]
+  (when (re-find (re-pattern (format "^%s" matcher)) cmd)
+    k))
+
+
+(defn ^:private get-cache-key
+  [cmd]
+  (or (some (partial cache-key-lookup cmd) cache-keys) false))
+
+
 (defn ^:private queue-command
-  ([device-id value] (queue-command device-id value false))
-  ([device-id value cmd-id]
-   (>!! (get-queue device-id)
-        (map->Command {:id cmd-id :value value}))))
+  ([device-id cmd] (queue-command device-id cmd true))
+  ([device-id cmd cache?]
+   (let [cache-key (if cache? (get-cache-key cmd) false)]
+     (>!! (get-queue device-id)
+          (map->Command {:id cache-key :value cmd})))))
 
 
 (defn ^:private create-consumer [id]

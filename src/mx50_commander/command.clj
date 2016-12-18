@@ -203,7 +203,7 @@
    "
   ([] (power false))
   ([always-on]
-   (if on-toggle "PON" "POF")))
+   (if always-on "PON" "POF")))
 
 
 (defn wipe
