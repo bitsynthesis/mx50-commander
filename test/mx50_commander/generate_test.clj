@@ -34,14 +34,15 @@
   (let [test-id :test-device-1
         test-device (core/device test-id)]
     (core/start test-id)
-    (gen/generate [r (range 255)
-                   b (range 127)
+    (gen/generate [panes [1 4 9 16]
+                   once false
+                   speed (range 63)
                    :type gen/linear
                    :steps 4]
-      (test-device (cmd/color-correct :b r b)))
+      (test-device (cmd/fx-multi :b panes once speed)))
     (Thread/sleep 100)
-    (is (= ["VCC:B0000"
-            "VCC:B552A"
-            "VCC:BA954"
-            "VCC:BFE7E"]
+    (is (= ["VDM:BFR00"
+            "VDM:B1R15"
+            "VDM:B2R29"
+            "VDM:B3R3E"]
            @shared/cmds-sent))))

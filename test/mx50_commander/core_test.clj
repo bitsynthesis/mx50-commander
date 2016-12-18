@@ -22,7 +22,6 @@
         test-cmd-1 "FOOBAR"
         test-cmd-2 "BARBAZ"
         test-device (core/device test-id)]
-    (core/start test-id)
     (test-device test-cmd-1)
     (test-device test-cmd-2)
     (Thread/sleep 100)
@@ -36,7 +35,6 @@
         test-cmd-id-1 :zig
         test-cmd-id-2 :connery
         test-device (core/device test-id)]
-    (core/start test-id)
     (dotimes [_ 10]
       (test-device test-cmd-1 test-cmd-id-1)
       (test-device test-cmd-2 test-cmd-id-2))
@@ -48,7 +46,6 @@
   (let [test-id :test-device
         test-cmd-1 "ZIGZAG"
         test-device (core/device test-id)]
-    (core/start test-id)
     (dotimes [_ 10]
       (test-device test-cmd-1 false))
     (Thread/sleep 100)
@@ -61,7 +58,6 @@
         test-cmd-2 "THAT"
         test-cmd-id :zig
         test-device (core/device test-id)]
-    (core/start test-id)
     (dotimes [_ 5]
       (test-device test-cmd-1 test-cmd-id)
       (test-device test-cmd-2 test-cmd-id))
@@ -75,7 +71,6 @@
         test-cmd-2 "THAT"
         test-cmd-id :zig
         test-device (core/device test-id)]
-    (core/start test-id)
     (test-device test-cmd-1 test-cmd-id)
     (Thread/sleep 100)
     (is (= test-cmd-1 (core/get-current test-id test-cmd-id)))
@@ -87,6 +82,7 @@
 (deftest start-stop-all-devices
   (let [test-device-1 (core/device :foo)
         test-device-2 (core/device :bar)]
+    (core/stop)
     (test-device-1 "NOPE")
     (test-device-2 "NOPE")
     (core/start)
@@ -106,7 +102,7 @@
 (deftest start-stop-single-device
   (let [test-device-1 (core/device :foo)
         test-device-2 (core/device :bar)]
-    (core/start :foo)
+    (core/stop :bar)
     (test-device-1 "YES-1A")
     (test-device-2 "NOPE")
     (core/start :bar)
@@ -128,7 +124,6 @@
         test-cmd-id-2 :zag
         test-device-1 (core/device test-id-1)
         test-device-2 (core/device test-id-2)]
-    (core/start)
     (test-device-1 test-cmd-1 test-cmd-id-1)
     (test-device-1 test-cmd-2 test-cmd-id-2)
     (test-device-2 test-cmd-2 test-cmd-id-2)
@@ -149,7 +144,6 @@
         test-cmd-id-2 :zag
         test-device-1 (core/device test-id-1)
         test-device-2 (core/device test-id-2)]
-    (core/start)
     (test-device-1 test-cmd-1 test-cmd-id-1)
     (test-device-1 test-cmd-2 test-cmd-id-2)
     (test-device-2 test-cmd-2 test-cmd-id-2)
@@ -169,7 +163,6 @@
         test-cmd-id :zig
         test-device-1 (core/device test-id-1)
         test-device-2 (core/device test-id-2)]
-    (core/start test-id-1)
     (test-device-1 test-cmd-1 test-cmd-id)
     (test-device-2 test-cmd-2 test-cmd-id)
     (Thread/sleep 100)
@@ -185,7 +178,6 @@
         test-device (core/device test-id {:rate test-rate})
         num-cmds 10
         half-expected-time (/ (* test-rate num-cmds) 2)]
-    (core/start)
     (future
      (dotimes [_ num-cmds]
        (test-device "FOO" false)))

@@ -197,6 +197,15 @@
             (restrict-range input 1 4))))
 
 
+(defn power
+  "|-----------|------------|----------------|
+   | always-on | true false | false = toggle |
+   "
+  ([] (power false))
+  ([always-on]
+   (if on-toggle "PON" "POF")))
+
+
 (defn wipe
   "|----------|---------|--------|
    | duration | 0 - 999 | frames |
@@ -249,6 +258,7 @@
                        :compression2   "ZM2"
                        :slide          "SC1"
                        :slide2         "SC2"
+                       ;; TODO
                        :pairing
                        :blinds
                        :multi          "ML1"

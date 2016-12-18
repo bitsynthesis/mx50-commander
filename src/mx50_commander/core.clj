@@ -120,14 +120,13 @@
 
 ;; TODO
 ;; - allow enabling / disabling caching for a device by default
-;; - test starting of devices on definition
 (defn device
   "|--------|----------------------------------------|
    | id     | ex. :my-mixer                          |
    | params | ex. {:port \"/dev/ttyUSB0\" :rate 100} |
 
-   Register a device and start it, return a function to queue commands
-   for execution."
+   Register a device, open a port, and start listening for commands. Return a
+   function to queue commands for execution."
   ([id] (device id {}))
   ([id params]
    (let [queue (create-queue)
