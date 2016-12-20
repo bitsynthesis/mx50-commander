@@ -11,9 +11,10 @@
 (deftest create-device
   (let [test-rate 200
         test-id :mx50-test
-        _ (core/device test-id {:port "/dev/ttyUSB666" :rate test-rate})
+        test-port "/dev/ttyUSB666"
+        _ (core/device test-id {:port test-port :rate test-rate})
         test-device (test-id @@#'core/devices)]
-    (is (= :dummy-port (:port test-device)))
+    (is (= test-port (:port test-device)))
     (is (= test-rate (:rate test-device)))
     (is (= {} (:current test-device)))))
 
@@ -215,3 +216,12 @@
       (is (= cache-key (#'core/get-cache-key cmd))))
     (is (< 0 @counter))
     (is (= (count test-cases) @counter))))
+
+
+(deftest disable-cache-per-device
+  (let [test-cmd "VCC:TFFFF"
+        test-device (core/device :test-device {:cache false})]
+    (dotimes [_ 7]
+      (test-device test-cmd))
+    (Thread/sleep 100)
+    (is (= 7 (count @shared/cmds-sent)))))

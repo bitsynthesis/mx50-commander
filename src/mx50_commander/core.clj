@@ -6,11 +6,15 @@
 
 
 (defrecord Command [id value])
-(defrecord Device [consumer current port queue rate])
+(defrecord Device [consumer current port port_ queue rate])
 
 
 (def ^:private devices (atom {}))
-(def ^:private device-default-rate 100)
+(def ^:private device-defaults
+  {:cache true
+   :rate 100
+   :port "/dev/ttyUSB0"})
+
 
 
 (defn ^:private open-port [port]
@@ -24,19 +28,14 @@
 
 
 (defn ^:private send-command
-  [port cmd]
+  [dev cmd]
   (let [start-char (char 0x02)
         end-char (char 0x03)]
-    (.writeBytes port (.getBytes (str start-char cmd end-char)))
-    cmd))
+    (.writeBytes (:port_ dev) (.getBytes (str start-char cmd end-char)))))
 
 
 (defn ^:private create-queue []
   (a/chan))
-
-
-(defn ^:private get-queue [id]
-  (:queue (id @devices)))
 
 
 (def ^:private cache-keys
@@ -79,10 +78,10 @@
 
 
 (defn ^:private queue-command
-  ([device-id cmd] (queue-command device-id cmd true))
+  ([device-id cmd] (queue-command device-id cmd (:cache (device-id @devices))))
   ([device-id cmd cache?]
    (let [cache-key (if cache? (get-cache-key cmd) false)]
-     (>!! (get-queue device-id)
+     (>!! (:queue (device-id @devices))
           (map->Command {:id cache-key :value cmd})))))
 
 
@@ -92,16 +91,13 @@
          (let [dev (id @devices)
                cmd (<!! (:queue dev))]
            (when (not (nil? cmd))
-             (if (= false (:id cmd))
-               (do
-                 (send-command (:port dev) (:value cmd))
-                 ;; TODO move this into send-command?
-                 (Thread/sleep (:rate dev)))
+             (if (false? (:id cmd))
+               (send-command dev (:value cmd))
+               ;; if cached, only send if new value is different
                (when (not= (get-current id (:id cmd)) (:value cmd))
                  (swap! devices assoc-in [id :current (:id cmd)] (:value cmd))
-                 (send-command (:port dev) (:value cmd))
-                 ;; TODO move this into send-command?
-                 (Thread/sleep (:rate dev))))
+                 (send-command dev (:value cmd))))
+             (Thread/sleep (:rate dev))
              (recur))))))
 
 
@@ -120,7 +116,7 @@
    | device-id | ex. :my-mixer   |
    | cmd-id    | ex. :back-color |
 
-   Clear the cache for all devices, a single device, or a single command
+   Clear the cached values for all devices, a single device, or a single command
    for a single device."
   ([]
    (doseq [device-id (keys @devices)]
@@ -132,30 +128,35 @@
 
 
 (defn stop
-  "|----|---------------|
-   | id | ex. :my-mixer |
+  "|-----------|---------------|
+   | device-id | ex. :my-mixer |
 
    Stop sending commands to all devices or a single device."
   ([]
-   (doseq [id (keys @devices)]
-     (stop id)))
-  ([id]
-   (let [old-queue (:queue (id @devices))]
-     (a/close! old-queue))))
+   (doseq [device-id (keys @devices)]
+     (stop device-id)))
+  ([device-id]
+   (let [dev (device-id @devices)]
+     (a/close! (:queue dev))
+     (when-let [port_ (:port_ dev)]
+       (.closePort port_)))))
 
 
 (defn start
-  "|----|---------------|
-   | id | ex. :my-mixer |
+  "|-----------|---------------|
+   | device-id | ex. :my-mixer |
 
-   Start sending commands to all devices or a single device."
+   Start sending commands to all devices or a single device. If a device is already
+   started, it will be stopped."
   ([]
-   (doseq [id (keys @devices)]
-     (start id)))
-  ([id]
-   (stop id)
-   (swap! devices assoc-in [id :queue] (create-queue))
-   (create-consumer id)))
+   (doseq [device-id (keys @devices)]
+     (start device-id)))
+  ([device-id]
+   (stop device-id)
+   (let [port (:port (device-id @devices))]
+     (swap! devices assoc-in [device-id :port_] (open-port port)))
+   (swap! devices assoc-in [device-id :queue] (create-queue))
+   (create-consumer device-id)))
 
 
 ;; TODO
@@ -169,14 +170,16 @@
    function to queue commands for execution."
   ([id] (device id {}))
   ([id params]
+   (when (id @devices)
+     (stop id))
    (let [queue (create-queue)
          _ (a/close! queue) ;; start with a closed queue
-         defaults {:rate device-default-rate}
+         params-with-defaults (merge device-defaults params)
          internals {:consumer nil
                     :current {}
-                    :port (open-port (or (:port params) "/dev/ttyUSB0"))
+                    :port_ nil
                     :queue queue}
-         definition (map->Device (merge defaults params internals))
+         definition (map->Device (merge params-with-defaults internals))
          handler (partial queue-command id)]
      (swap! devices assoc id definition)
      (start id)
