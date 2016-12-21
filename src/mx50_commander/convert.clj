@@ -1,7 +1,5 @@
 (ns mx50-commander.convert
-  "Functions for converting between color and number formats. These helpers are
-   primarily utilized by the functions in `mx50-commander.command`, but are made
-   available for projects which require more granular control."
+  "Convert between color and number formats."
   (:import java.lang.Math))
 
 

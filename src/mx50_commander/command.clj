@@ -1,6 +1,5 @@
 (ns mx50-commander.command
-  "A human friendly interface over the MX50 RS232 command spec.
-   These functions create command strings to send to the video mixer."
+  "Command wrappers which return strings per the WJ-MX50 RS232 spec."
   (:require [mx50-commander.convert :refer :all]))
 
 
@@ -16,7 +15,8 @@
    | green | 0 - 255 | value of green channel |
    | blue  | 0 - 255 | value of blue channel  |
 
-   Set background matte color using RGB instead of the native YPbPr."
+   Set background matte color using RGB instead of the native YPbPr.
+   This command is ignored if back-color-preset is set to :bars."
   [red green blue]
   (let [[y p-b p-r] (map default-hex-range (rgb-to-ypbpr red green blue))]
     (format "VBM:%s%s%s" y p-r p-b)))
@@ -251,31 +251,32 @@
    | pattern  | 0 - 3      | number of additional presses on the given button |
    | modifier | see source | keyword corresponding to wipe modifier buttons   |
    "
-  [button pattern modifier]
-  (let [button-root [1 5 16 20 9 24 12]
-        modifier-code {:none           "MLF"
-                       :compression    "ZM1"
-                       :compression2   "ZM2"
-                       :slide          "SC1"
-                       :slide2         "SC2"
-                       ;; TODO
-                       :pairing
-                       :blinds
-                       :multi          "ML1"
-                       :multi2         "ML2"
-                       :multi3         "ML3"
-                       :multi4         "ML4"
-                       :multi5         "ML5"
-                       :multi6         "ML6"
-                       :multi-pairing  "MP1"
-                       :multi-pairing2 "MP2"
-                       :multi-pairing3 "MP3"
-                       :multi-pairing4 "MP4"
-                       :multi-pairing5 "MP5"
-                       :multi-pairing6 "MP6"}]
-    (format "VWP:%s%s"
-            (-> button button-root (+ pattern) (restrict-range 0 27) zero-pad)
-            (modifier-code modifier))))
+  ([button pattern] (wipe-pattern button pattern :none))
+  ([button pattern modifier]
+   (let [button-root [1 5 16 20 9 24 12]
+         modifier-code {:none           "MLF"
+                        :compression    "ZM1"
+                        :compression2   "ZM2"
+                        :slide          "SC1"
+                        :slide2         "SC2"
+                        ;; TODO
+                        :pairing
+                        :blinds
+                        :multi          "ML1"
+                        :multi2         "ML2"
+                        :multi3         "ML3"
+                        :multi4         "ML4"
+                        :multi5         "ML5"
+                        :multi6         "ML6"
+                        :multi-pairing  "MP1"
+                        :multi-pairing2 "MP2"
+                        :multi-pairing3 "MP3"
+                        :multi-pairing4 "MP4"
+                        :multi-pairing5 "MP5"
+                        :multi-pairing6 "MP6"}]
+     (format "VWP:%s%s"
+             (-> button button-root (+ pattern) (restrict-range 0 27) zero-pad)
+             (modifier-code modifier)))))
 
 
 (defn wipe-reverse

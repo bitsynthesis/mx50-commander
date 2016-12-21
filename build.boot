@@ -4,7 +4,7 @@
  :dependencies '[[org.clojure/clojure "1.8.0"]
                  [adzerk/boot-test "1.1.1" :scope "test"]
                  [boot-codox "0.10.2" :scope "test"]
-                 [org.clojure/core.async "0.1.346.0-17112a-alpha"]
+                 [org.clojure/core.async "0.2.374"]
                  [org.scream3r/jssc "2.8.0"]])
 
 
@@ -12,28 +12,21 @@
          '[codox.boot :refer [codox]])
 
 
-(def version "0.1")
+(def version "0.2")
 
 
 (deftask test []
-  (boot-test/test))
+  (boot-test/test
+   :exclusions #{'mx50-commander.examples.basic}))
 
 
 (deftask doc []
   (comp (codox :name "MX50 Commander"
                :version version
-               :description "
-A Clojure library for controlling Panasonic WJ-MX50 and WJ-MX30 video mixers
-via USB serial port adapter."
+               :description (str "A Clojure library for controlling "
+                                 "Panasonic WJ-MX50 and WJ-MX30 video mixers "
+                                 "via USB RS232 serial port adapter.")
                :metadata {:doc/format :markdown}
-               :source-uri "https://github.com/bbakersmith/mx50-commander/blob/{version}/{filepath}#L{line}"
-               )
+               :source-uri (str "https://github.com/bbakersmith/mx50-commander"
+                                "/blob/{version}/{filepath}#L{line}"))
         (target)))
-
-
-(deftask build []
-  (comp (aot :namespace #{'mx50-commander.core})
-        (pom :project 'bbakersmith/mx50-commander
-             :version version)
-        (jar :main 'mx50-commander.core)
-        (install)))

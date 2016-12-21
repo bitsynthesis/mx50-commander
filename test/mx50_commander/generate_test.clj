@@ -1,6 +1,6 @@
 (ns mx50-commander.generate-test
   (:require [clojure.test :refer :all]
-            [mx50-commander.core :as core]
+            [mx50-commander.control :as con]
             [mx50-commander.generate :as gen]
             [mx50-commander.command :as cmd]
             [mx50-commander.test-shared :as shared]))
@@ -10,19 +10,19 @@
 
 
 (deftest linear-generator
-  (is (= [[:b 0 :red]
-          [:b 10 :red]
-          [:b 19 :blue]
-          [:b 29 :blue]]
-         (gen/linear 4 :b (range 30) [:red :blue]))))
+  (is (= [[0 :red]
+          [10 :red]
+          [19 :blue]
+          [29 :blue]]
+         (gen/linear 4 (range 30) [:red :blue]))))
 
 
 (deftest curve-generator
-  (is (= [[:b 0 :red]
-          [:b 5 :blue]
-          [:b 14 :yellow]
-          [:b 29 :yellow]]
-         (gen/curve 4 :b (range 30) [:red :blue :yellow]))))
+  (is (= [[0 :red]
+          [5 :blue]
+          [14 :yellow]
+          [29 :yellow]]
+         (gen/curve 4 (range 30) [:red :blue :yellow]))))
 
 
 (deftest filter-bindings
@@ -32,14 +32,12 @@
 
 (deftest generate
   (let [test-id :test-device-1
-        test-device (core/device test-id)]
-    (core/start test-id)
-    (gen/generate [panes [1 4 9 16]
-                   once false
-                   speed (range 63)
-                   :type gen/linear
-                   :steps 4]
-      (test-device (cmd/fx-multi :b panes once speed)))
+        test-device (con/device test-id)]
+    (con/start test-id)
+    (gen/generate [_ (range 4)
+                   panes [1 4 9 16]
+                   speed (range 63)]
+      (test-device (cmd/fx-multi :b panes false speed)))
     (Thread/sleep 100)
     (is (= ["VDM:BFR00"
             "VDM:B1R15"

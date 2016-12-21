@@ -1,4 +1,6 @@
-(ns mx50-commander.core
+(ns mx50-commander.control
+  "Control MX devices, start and stop sending them commands, and access their
+   last sent values."
   (:require [clojure.core.async :refer [>!! <!!] :as a]))
 
 
@@ -11,7 +13,7 @@
 
 (def ^:private devices (atom {}))
 (def ^:private device-defaults
-  {:cache true
+  {:cache false
    :rate 100
    :port "/dev/ttyUSB0"})
 
@@ -39,8 +41,7 @@
 
 
 (def ^:private cache-keys
-  {:back-color         "VBM"
-   :back-color-preset  "VBC"
+  {:back-color         "VB[MC]"
    :color-correct      "VCC"
    :color-correct-gain "VCG"
    :fade               "VFA"
@@ -159,8 +160,6 @@
    (create-consumer device-id)))
 
 
-;; TODO
-;; - allow enabling / disabling caching for a device by default
 (defn device
   "|--------|----------------------------------------|
    | id     | ex. :my-mixer                          |

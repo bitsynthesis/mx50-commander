@@ -1,7 +1,7 @@
-(ns mx50-commander.core-test
+(ns mx50-commander.control-test
   (:require [clojure.test :refer :all]
             [mx50-commander.command :as cmd]
-            [mx50-commander.core :as core]
+            [mx50-commander.control :as con]
             [mx50-commander.test-shared :as shared]))
 
 
@@ -12,8 +12,8 @@
   (let [test-rate 200
         test-id :mx50-test
         test-port "/dev/ttyUSB666"
-        _ (core/device test-id {:port test-port :rate test-rate})
-        test-device (test-id @@#'core/devices)]
+        _ (con/device test-id {:port test-port :rate test-rate})
+        test-device (test-id @@#'con/devices)]
     (is (= test-port (:port test-device)))
     (is (= test-rate (:rate test-device)))
     (is (= {} (:current test-device)))))
@@ -23,7 +23,7 @@
   (let [test-id :test-device
         test-cmd-1 "FOOBAR"
         test-cmd-2 "BARBAZ"
-        test-device (core/device test-id)]
+        test-device (con/device test-id)]
     (test-device test-cmd-1)
     (test-device test-cmd-2)
     (Thread/sleep 100)
@@ -34,7 +34,7 @@
   (let [test-id :test-device
         test-cmd-1 "VCG:TFF"
         test-cmd-2 "VMA:000"
-        test-device (core/device test-id)]
+        test-device (con/device test-id)]
     (dotimes [_ 10]
       (test-device test-cmd-1)
       (test-device test-cmd-2))
@@ -45,7 +45,7 @@
 (deftest no-filter-if-cache-disabled
   (let [test-id :test-device
         test-cmd-1 "VCG:TFF"
-        test-device (core/device test-id)]
+        test-device (con/device test-id)]
     (dotimes [_ 10]
       (test-device test-cmd-1 false))
     (Thread/sleep 100)
@@ -56,7 +56,7 @@
   (let [test-id :test-device
         test-cmd-1 "VCG:TFF"
         test-cmd-2 "VCG:T00"
-        test-device (core/device test-id)]
+        test-device (con/device test-id)]
     (dotimes [_ 5]
       (test-device test-cmd-1)
       (test-device test-cmd-2))
@@ -69,28 +69,28 @@
         test-cmd-1 "VCG:TFF"
         test-cmd-2 "VCG:T00"
         test-cmd-id :color-correct-gain
-        test-device (core/device test-id)]
+        test-device (con/device test-id)]
     (test-device test-cmd-1)
     (Thread/sleep 100)
-    (is (= test-cmd-1 (core/get-current test-id test-cmd-id)))
+    (is (= test-cmd-1 (con/get-current test-id test-cmd-id)))
     (test-device test-cmd-2)
     (Thread/sleep 100)
-    (is (= test-cmd-2 (core/get-current test-id test-cmd-id)))))
+    (is (= test-cmd-2 (con/get-current test-id test-cmd-id)))))
 
 
 (deftest start-stop-all-devices
-  (let [test-device-1 (core/device :foo)
-        test-device-2 (core/device :bar)]
-    (core/stop)
+  (let [test-device-1 (con/device :foo)
+        test-device-2 (con/device :bar)]
+    (con/stop)
     (test-device-1 "NOPE")
     (test-device-2 "NOPE")
-    (core/start)
+    (con/start)
     (test-device-1 "YES-1A")
     (test-device-2 "YES-2A")
-    (core/stop)
+    (con/stop)
     (test-device-1 "NOPE")
     (test-device-2 "NOPE")
-    (core/start)
+    (con/start)
     (test-device-1 "YES-1B")
     (test-device-2 "YES-2B")
     (Thread/sleep 100)
@@ -99,14 +99,14 @@
 
 
 (deftest start-stop-single-device
-  (let [test-device-1 (core/device :foo)
-        test-device-2 (core/device :bar)]
-    (core/stop :bar)
+  (let [test-device-1 (con/device :foo)
+        test-device-2 (con/device :bar)]
+    (con/stop :bar)
     (test-device-1 "YES-1A")
     (test-device-2 "NOPE")
-    (core/start :bar)
+    (con/start :bar)
     (test-device-2 "YES-2A")
-    (core/stop :foo)
+    (con/stop :foo)
     (test-device-1 "NOPE")
     (test-device-2 "YES-2B")
     (Thread/sleep 100)
@@ -121,17 +121,17 @@
         test-cmd-2 "VCC:TFFFF"
         test-cmd-id-1 :color-correct-gain
         test-cmd-id-2 :color-correct
-        test-device-1 (core/device test-id-1)
-        test-device-2 (core/device test-id-2)]
+        test-device-1 (con/device test-id-1)
+        test-device-2 (con/device test-id-2)]
     (test-device-1 test-cmd-1 test-cmd-id-1)
     (test-device-1 test-cmd-2 test-cmd-id-2)
     (test-device-2 test-cmd-2 test-cmd-id-2)
     (Thread/sleep 100)
-    (is (= test-cmd-1 (core/get-current test-id-1 test-cmd-id-1)))
-    (core/clear-current test-id-1 test-cmd-id-2)
-    (is (= test-cmd-1 (core/get-current test-id-1 test-cmd-id-1)))
-    (is (= nil (core/get-current test-id-1 test-cmd-id-2)))
-    (is (= test-cmd-2 (core/get-current test-id-2 test-cmd-id-2)))))
+    (is (= test-cmd-1 (con/get-current test-id-1 test-cmd-id-1)))
+    (con/clear-current test-id-1 test-cmd-id-2)
+    (is (= test-cmd-1 (con/get-current test-id-1 test-cmd-id-1)))
+    (is (= nil (con/get-current test-id-1 test-cmd-id-2)))
+    (is (= test-cmd-2 (con/get-current test-id-2 test-cmd-id-2)))))
 
 
 (deftest clear-current-single-device
@@ -141,17 +141,17 @@
         test-cmd-2 "VCC:T0000"
         test-cmd-id-1 :color-correct-gain
         test-cmd-id-2 :color-correct
-        test-device-1 (core/device test-id-1)
-        test-device-2 (core/device test-id-2)]
+        test-device-1 (con/device test-id-1)
+        test-device-2 (con/device test-id-2)]
     (test-device-1 test-cmd-1)
     (test-device-1 test-cmd-2)
     (test-device-2 test-cmd-2)
     (Thread/sleep 100)
-    (is (= test-cmd-1 (core/get-current test-id-1 test-cmd-id-1)))
-    (core/clear-current test-id-1)
-    (is (= nil (core/get-current test-id-1 test-cmd-id-1)))
-    (is (= nil (core/get-current test-id-1 test-cmd-id-2)))
-    (is (= test-cmd-2 (core/get-current test-id-2 test-cmd-id-2)))))
+    (is (= test-cmd-1 (con/get-current test-id-1 test-cmd-id-1)))
+    (con/clear-current test-id-1)
+    (is (= nil (con/get-current test-id-1 test-cmd-id-1)))
+    (is (= nil (con/get-current test-id-1 test-cmd-id-2)))
+    (is (= test-cmd-2 (con/get-current test-id-2 test-cmd-id-2)))))
 
 
 (deftest clear-current-all-devices
@@ -160,21 +160,21 @@
         test-cmd-1 "VCG:T00"
         test-cmd-2 "VCG:TFF"
         test-cmd-id :color-correct-gain
-        test-device-1 (core/device test-id-1)
-        test-device-2 (core/device test-id-2)]
+        test-device-1 (con/device test-id-1)
+        test-device-2 (con/device test-id-2)]
     (test-device-1 test-cmd-1)
     (test-device-2 test-cmd-2)
     (Thread/sleep 100)
-    (is (= test-cmd-1 (core/get-current test-id-1 test-cmd-id)))
-    (core/clear-current)
-    (is (= nil (core/get-current test-id-1 test-cmd-id)))
-    (is (= nil (core/get-current test-id-2 test-cmd-id)))))
+    (is (= test-cmd-1 (con/get-current test-id-1 test-cmd-id)))
+    (con/clear-current)
+    (is (= nil (con/get-current test-id-1 test-cmd-id)))
+    (is (= nil (con/get-current test-id-2 test-cmd-id)))))
 
 
 (deftest rate-limit
   (let [test-id :test-device-1
         test-rate 100
-        test-device (core/device test-id {:rate test-rate})
+        test-device (con/device test-id {:rate test-rate})
         num-cmds 10
         half-expected-time (/ (* test-rate num-cmds) 2)]
     (future
@@ -189,7 +189,7 @@
 (deftest cache-key-lookup
   (let [counter (atom 0)
         test-cases [[(cmd/back-color 0 0 0)         :back-color]
-                    [(cmd/back-color-preset :red 0) :back-color-preset]
+                    [(cmd/back-color-preset :red 0) :back-color]
                     [(cmd/color-correct :a 0 0 0)   :color-correct]
                     [(cmd/color-correct-gain :a 0)  :color-correct-gain]
                     [(cmd/color-correct-off :a)     :color-correct]
@@ -213,14 +213,14 @@
                     ["FOOBAR"                       false]]]
     (doseq [[cmd cache-key] test-cases]
       (swap! counter inc)
-      (is (= cache-key (#'core/get-cache-key cmd))))
+      (is (= cache-key (#'con/get-cache-key cmd))))
     (is (< 0 @counter))
     (is (= (count test-cases) @counter))))
 
 
 (deftest disable-cache-per-device
   (let [test-cmd "VCC:TFFFF"
-        test-device (core/device :test-device {:cache false})]
+        test-device (con/device :test-device {:cache false})]
     (dotimes [_ 7]
       (test-device test-cmd))
     (Thread/sleep 100)

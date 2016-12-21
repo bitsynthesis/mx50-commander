@@ -1,4 +1,5 @@
 (ns mx50-commander.generate
+  "Generate iterations of parameters for a given command or commands."
   (:import java.lang.Math))
 
 
@@ -34,10 +35,7 @@
    step, and a collection of values."
   [generator num-steps collections]
   (vec (for [s (range num-steps)]
-            (vec (for [c collections]
-                      (if (sequential? c)
-                        (generator num-steps s (vec c))
-                        c))))))
+            (vec (for [c collections] (generator num-steps s (vec c)))))))
 
 
 (defn ^:private filter-bindings
@@ -81,8 +79,7 @@
    (generate [color  [:red :blue :green]
               gain   (range 127 255)
               level  (range 255)
-              :type  linear
-              :steps 30]
+              :type  linear]
      (my-device (back-color-preset color gain))
      (my-device (fade-level level)))
    ```
@@ -90,8 +87,9 @@
   [bindings & body]
   (let [gen-config (filter-bindings keyword? bindings)
         cmd-params (filter-bindings symbol? bindings)
-        generator (:type gen-config)
-        num-steps (:steps gen-config)]
-    `(let [steps# (~generator ~num-steps ~@(vals cmd-params))]
+        cmd-keys (keys cmd-params)
+        cmd-vals (vec (vals cmd-params))
+        generator (or (:type gen-config) 'mx50-commander.generate/linear)]
+    `(let [steps# (~generator (count (first ~cmd-vals)) ~@cmd-vals)]
        (doseq [s# steps#]
-         (apply (fn ~(vec (keys cmd-params)) ~@body) s#)))))
+         (apply (fn ~(vec cmd-keys) ~@body) s#)))))
