@@ -30,3 +30,10 @@
                :source-uri (str "https://github.com/bbakersmith/mx50-commander"
                                 "/blob/{version}/{filepath}#L{line}"))
         (target)))
+
+
+(deftask build []
+  (comp (pom :project 'bbakersmith/mx50-commander
+             :version version)
+        (jar)
+        (install)))
