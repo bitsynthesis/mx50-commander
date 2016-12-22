@@ -101,9 +101,8 @@
 (defn ^:private create-consumer [dev-id]
   (a/go
    (loop []
-     (let [dev (dev-id @devices)
-           cmd (<!! (:queue dev))]
-       (when (not (nil? cmd))
+     (let [dev (dev-id @devices)]
+       (when-let [cmd (<!! (:queue dev))]
          (send-cached-command dev-id cmd)
          (Thread/sleep (:rate dev))
          (recur))))))
