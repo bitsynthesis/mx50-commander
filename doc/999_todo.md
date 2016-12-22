@@ -1,6 +1,7 @@
 # TODO
 
 * logging!!!
+* filter out control messages (or convert them)
 * rename core ns to device
 * documentation
 * more better curve generators

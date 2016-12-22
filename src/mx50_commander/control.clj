@@ -189,3 +189,9 @@
      (swap! devices assoc id definition)
      (start id)
      handler)))
+
+
+;; TODO docs
+(defn exit []
+  (stop)
+  (System/exit 0))
