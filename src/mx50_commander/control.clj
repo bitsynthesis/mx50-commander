@@ -29,13 +29,6 @@
           (.setParams baud-rate data-bits stop-bits parity))))
 
 
-(defn ^:private send-command
-  [dev cmd]
-  (let [start-char (char 0x02)
-        end-char (char 0x03)]
-    (.writeBytes (:port_ dev) (.getBytes (str start-char cmd end-char)))))
-
-
 (defn ^:private create-queue []
   (a/chan))
 
@@ -86,20 +79,34 @@
           (map->Command {:id cache-key :value cmd})))))
 
 
-(defn ^:private create-consumer [id]
+(defn ^:private send-command
+  [dev-id cmd-str]
+  (let [port_ (:port_ (dev-id @devices))
+        start-char (char 0x02)
+        end-char (char 0x03)]
+    (.writeBytes port_ (.getBytes (str start-char cmd-str end-char)))))
+
+
+(defn ^:private send-cached-command
+  [dev-id cmd]
+  (let [ci (:id cmd)
+        cv (:value cmd)]
+    (if (false? ci)
+      (send-command dev-id cv)
+      (when (not= (get-current dev-id ci) cv)
+        (swap! devices assoc-in [dev-id :current ci] cv)
+        (send-command dev-id cv)))))
+
+
+(defn ^:private create-consumer [dev-id]
   (a/go
    (loop []
-         (let [dev (id @devices)
-               cmd (<!! (:queue dev))]
-           (when (not (nil? cmd))
-             (if (false? (:id cmd))
-               (send-command dev (:value cmd))
-               ;; if cached, only send if new value is different
-               (when (not= (get-current id (:id cmd)) (:value cmd))
-                 (swap! devices assoc-in [id :current (:id cmd)] (:value cmd))
-                 (send-command dev (:value cmd))))
-             (Thread/sleep (:rate dev))
-             (recur))))))
+     (let [dev (dev-id @devices)
+           cmd (<!! (:queue dev))]
+       (when (not (nil? cmd))
+         (send-cached-command dev-id cmd)
+         (Thread/sleep (:rate dev))
+         (recur))))))
 
 
 (defn get-current
