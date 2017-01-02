@@ -18,7 +18,6 @@
    :port "/dev/ttyUSB0"})
 
 
-
 (defn ^:private open-port [port]
   (let [baud-rate 9600
         data-bits 7

@@ -1,4 +1,6 @@
 (ns mx50-commander.midi
+  "MIDI async to sync, dropping older messages for newer while consumer is
+   blocked."
   (:require [clojure.core.async :refer [>!! <!!] :as a]
             [midi :as m]
             [mx50-commander.control :as con]
@@ -6,17 +8,22 @@
             [mx50-commander.generate :as gen]))
 
 
+(declare midi-stop)
+
+
 (def ^:private midi-buffers (atom nil))
 (def ^:private midi-in (atom nil))
 
-(defn ^:private reset-midi-buffers []
-  (doall (map a/close! @midi-buffers))
+
+(defn ^:private create-midi-buffers []
   (reset! midi-buffers (repeatedly 16 #(a/chan (a/sliding-buffer 1)))))
+
 
 (defn ^:private midi-handler
   [message timestamp]
   (>!! (nth @midi-buffers (:chan message))
        (assoc message :time timestamp)))
+
 
 (defn ^:private create-midi-consumer [chan handler]
   (let [async-chan (nth @midi-buffers chan)]
@@ -26,7 +33,17 @@
          (handler midi-event)
          (recur))))))
 
-(defn ^:private midi-start []
+
+;; TODO doc
+(defn midi-stop []
+  (doall (map a/close! @midi-buffers)))
+
+
+;; TODO naming, move to control
+(defn midi-start [& bindings]
+  (midi-stop)
+  (create-midi-buffers)
+
   ;; TODO revisit this midi-in approach to only calling
   ;; m/midi-in once successfully, and not requiring
   ;; users to do so...
@@ -41,14 +58,14 @@
       (do
         (reset! midi-in in)
         (m/midi-handle-events in midi-handler))
-      (println "No MIDI device found."))))
+      (println "No MIDI device found.")))
 
-;; TODO naming, move to control
-(defn midi-triggers [& bindings]
-  (reset-midi-buffers)
-  (midi-start)
+
   (doseq [[chan handler] (partition 2 bindings)]
     (create-midi-consumer chan handler)))
+
+
+;; TODO midi-stop
 
 
 ;; TODO move to examples
