@@ -27,10 +27,10 @@
 
 (deftest midi-triggers
   (mid/midi-start
-   ;; quick enough to execute all
-   5 (partial swap! ch5 conj)
-   ;; slow enough to execute only first
-   9 #(do (swap! ch9 conj %) (Thread/sleep 1000)))
+   {;; quick enough to execute all
+    5 (partial swap! ch5 conj)
+    ;; slow enough to execute only first
+    9 #(do (swap! ch9 conj %) (Thread/sleep 1000))})
 
   (doseq [chan [0
                 1
@@ -47,3 +47,18 @@
   (is (= 5 (count @ch5)))
   ;; only first
   (is (= 1 (count @ch9))))
+
+
+(deftest midi-device-prompt
+  ;; devices already defined should only prompt device selection once
+  (mid/midi-start {0 identity})
+  (mid/midi-start {0 identity})
+  (is (= 1 @midi-device-select))
+  ;; unless re-selection is explicitly requested
+  (mid/midi-start {0 identity} true)
+  (is (= 2 @midi-device-select)))
+
+
+(deftest midi-stop
+  ;; TODO make sure stopping and restarting works
+  )

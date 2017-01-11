@@ -40,32 +40,33 @@
 
 
 ;; TODO naming, move to control
-(defn midi-start [& bindings]
-  (midi-stop)
-  (create-midi-buffers)
+(defn midi-start
+  ([bindings] (midi-start bindings false))
+  ([bindings reselect]
+   (midi-stop)
+   (create-midi-buffers)
 
-  ;; TODO revisit this midi-in approach to only calling
-  ;; m/midi-in once successfully, and not requiring
-  ;; users to do so...
-  ;;
-  ;; instead maybe move the when-not to midi-triggers
-  ;; and build in closing logic here, if closing is a thing
-  ;; with m/midi-in... then can expose midi-start publicly
-  ;; in case users need to trigger a manual refresh of the
-  ;; midi input - say, to select a different device
-  (when-not @midi-in
-    (if-let [in (m/midi-in)]
-      (do
-        (reset! midi-in in)
-        (m/midi-handle-events in midi-handler))
-      (println "No MIDI device found.")))
+   ;; TODO revisit this midi-in approach to only calling
+   ;; m/midi-in once successfully, and not requiring
+   ;; users to do so...
+   ;;
+   ;; instead maybe move the when-not to midi-triggers
+   ;; and build in closing logic here, if closing is a thing
+   ;; with m/midi-in... then can expose midi-start publicly
+   ;; in case users need to trigger a manual refresh of the
+   ;; midi input - say, to select a different device
+   (when (or (nil? @midi-in) reselect)
+     ;; when a device has previously been selected, stub it out
+     (when @midi-in
+       (m/midi-handle-events @midi-in identity))
+     (if-let [in (m/midi-in)]
+       (do
+         (reset! midi-in in)
+         (m/midi-handle-events in midi-handler))
+       (println "No MIDI device found.")))
 
-
-  (doseq [[chan handler] (partition 2 bindings)]
-    (create-midi-consumer chan handler)))
-
-
-;; TODO midi-stop
+   (doseq [[chan handler] bindings]
+     (create-midi-consumer chan handler))))
 
 
 ;; TODO move to examples
