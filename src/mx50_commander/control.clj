@@ -190,7 +190,11 @@
      handler)))
 
 
-;; TODO docs
-(defn exit []
+(defn exit
+  "Cleanly exit the running program, politely closing ports and such. This
+   is intended as a REPL helper."
+  []
   (stop)
+  ;; TODO #midi-stop here or in #stop?
+  ;; (midi-stop)
   (System/exit 0))
