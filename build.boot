@@ -38,7 +38,8 @@
   (comp (aot :namespace #{'mx50-commander.command
                           'mx50-commander.control
                           'mx50-commander.convert
-                          'mx50-commander.generate})
+                          'mx50-commander.generate
+                          'mx50-commander.midi})
         (pom :project 'bbakersmith/mx50-commander
              :version version)
         (jar)

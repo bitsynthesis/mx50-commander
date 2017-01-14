@@ -1,7 +1,7 @@
 (ns mx50-commander.midi
   "MIDI async to sync, dropping older messages for newer while consumer is
    blocked."
-  (:require [clojure.core.async :refer [>!! <!!] :as a]
+  (:require [clojure.core.async :refer [>!! <!] :as a]
             [midi :as m]
             [mx50-commander.control :as con]
             [mx50-commander.command :as cmd]
@@ -29,7 +29,7 @@
   (let [async-chan (nth @midi-buffers chan)]
     (a/go
      (loop []
-       (when-let [midi-event (<!! async-chan)]
+       (when-let [midi-event (<! async-chan)]
          (handler midi-event)
          (recur))))))
 
