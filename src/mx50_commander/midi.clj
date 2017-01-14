@@ -39,7 +39,7 @@
   (doall (map a/close! @midi-buffers)))
 
 
-;; TODO naming, move to control
+;; TODO naming, move to control?
 (defn midi-start
   ([bindings] (midi-start bindings false))
   ([bindings reselect]
@@ -67,31 +67,3 @@
 
    (doseq [[chan handler] bindings]
      (create-midi-consumer chan handler))))
-
-
-;; TODO move to examples
-;; DEMO START
-
-;;
-;; (def mx50
-;;   (con/device :mx50 {:port "/dev/ttyUSB1" :cache true :rate 50}))
-;;
-;; (defn gross-synth [event]
-;;   (mx50 (cmd/back-color (-> event :vel (- 64) (* 4)) 255 0)))
-;;
-;; (defn psych-kit [event]
-;;   (case (:note event)
-;;     44 (mx50 (cmd/wipe-level (* 1.25 (:vel event))))
-;;     45 (mx50 (cmd/fx-negative :b (< (:vel event) 65)))
-;;     46 (gen/generate [_ (range 4)
-;;                       r (range 100 225)
-;;                       g (range 150)]
-;;         (mx50 (cmd/back-color r g 0)))
-;;     :do-nothing))
-;;
-;; (midi-triggers
-;;  0 gross-synth
-;;  1 psych-kit)
-;;
-
-;; DEMO END
