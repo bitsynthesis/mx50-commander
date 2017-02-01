@@ -1,10 +1,24 @@
 (ns mx50-commander.control
-  "Control MX devices, start and stop sending them commands, and access their
-   last sent values."
+  "Control MX devices, start and stop sending them commands,
+   and access their last sent values."
   (:require [clojure.core.async :refer [>!! <!!] :as a]))
 
 
 (declare get-current)
+
+
+(gen-class
+ :name mx50_commander.control.DeviceFileFilter
+ :extends javax.swing.filechooser.FileFilter
+ :prefix deviceFileFilter-)
+
+
+(defn deviceFileFilter-accept [_ file]
+  (not (nil? (re-find #"^/dev/ttyUSB[0-9]+" (.getPath file)))))
+
+
+(defn deviceFileFilter-getDescription [_]
+  "USB devices")
 
 
 (defrecord Command [id value])
@@ -15,7 +29,17 @@
 (def ^:private device-defaults
   {:cache false
    :rate 100
+   ;; this isn't used because select-port intercepts
    :port "/dev/ttyUSB0"})
+
+
+(defn ^:private select-port [device-id]
+  (let [file-chooser (javax.swing.JFileChooser. "/dev")]
+    (doto file-chooser
+          (.setFileFilter (mx50_commander.control.DeviceFileFilter.))
+          (.setDialogTitle (name device-id))
+          (.showOpenDialog nil))
+    (-> file-chooser .getSelectedFile .getPath)))
 
 
 (defn ^:private open-port [port]
@@ -176,14 +200,15 @@
   ([id params]
    (when (id @devices)
      (stop id))
-   (let [queue (create-queue)
+   (let [;; force port selection
+         params (update params :port #(or % (select-port id)))
+         queue (create-queue)
          _ (a/close! queue) ;; start with a closed queue
-         params-with-defaults (merge device-defaults params)
          internals {:consumer nil
                     :current {}
                     :port_ nil
                     :queue queue}
-         definition (map->Device (merge params-with-defaults internals))
+         definition (map->Device (merge device-defaults params internals))
          handler (partial queue-command id)]
      (swap! devices assoc id definition)
      (start id)
