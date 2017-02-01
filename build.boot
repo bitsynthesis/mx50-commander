@@ -10,37 +10,44 @@
 
 
 (require '[adzerk.boot-test :as boot-test]
-         '[codox.boot :refer [codox]])
+         '[codox.boot :as codox])
 
 
 (def version "0.3")
 
 
+(def public-namespaces
+  '#{mx50-commander.command
+     mx50-commander.control
+     mx50-commander.convert
+     mx50-commander.filter
+     mx50-commander.generate
+     mx50-commander.midi})
+
+
+(task-options!
+ aot {:namespace public-namespaces}
+ pom {:project 'bbakersmith/mx50-commander
+      :version version})
+
+
 (deftask test []
-  (boot-test/test
-   :exclusions #{'mx50-commander.examples.basic}))
+  (boot-test/test))
 
 
 (deftask doc []
-  (comp (codox :name "MX50 Commander"
-               :version version
-               :description (str "A Clojure library for controlling "
-                                 "Panasonic WJ-MX50 and WJ-MX30 video mixers "
-                                 "via USB RS232 serial port adapter.")
-               :metadata {:doc/format :markdown}
-               :source-uri (str "https://github.com/bbakersmith/mx50-commander"
-                                "/blob/{version}/{filepath}#L{line}"))
+  (comp (codox/codox :name "MX50 Commander"
+                     :description (str "A Clojure library for controlling "
+                                       "Panasonic WJ-MX50 and WJ-MX30 "
+                                       "video mixers via USB RS232 serial "
+                                       "port adapter.")
+                     :metadata {:doc/format :markdown}
+                     :source-uri (str "https://github.com"
+                                      "/bbakersmith/mx50-commander"
+                                      "/blob/{version}/{filepath}#L{line}")
+                     :version version)
         (target)))
 
 
 (deftask build []
-  ;; TODO not sure aot-ing everything is the right move here
-  (comp (aot :namespace #{'mx50-commander.command
-                          'mx50-commander.control
-                          'mx50-commander.convert
-                          'mx50-commander.generate
-                          'mx50-commander.midi})
-        (pom :project 'bbakersmith/mx50-commander
-             :version version)
-        (jar)
-        (install)))
+  (comp (aot) (pom) (jar) (install)))
