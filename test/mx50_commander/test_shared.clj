@@ -9,8 +9,7 @@
   (reset! cmds-sent [])
   (reset! @#'con/devices {})
   (with-redefs [con/open-port (fn [_] nil)
+                con/select-port (fn [_] "/dev/ttyUSB0")
                 con/send-command (fn [_ cmd] (swap! cmds-sent conj cmd))
-                con/device-defaults {:cache true
-                                      :rate 0
-                                      :port "/dev/ttyUSB0"}]
+                con/device-defaults {:cache true :rate 0}]
     (test-fn)))

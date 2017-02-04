@@ -13,7 +13,7 @@
          '[codox.boot :as codox])
 
 
-(def version "0.3")
+(def version "0.4")
 
 
 (def public-namespaces
