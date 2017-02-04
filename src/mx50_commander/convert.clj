@@ -86,3 +86,16 @@
                     [300 360] [c 0 x])]
     (mapv #(-> % (+ m) (* 255) Math/ceil int)
           rgb_)))
+
+
+;; TODO doc
+(defn relative
+  "Get the item in a collection that corresponds with the value relative to
+   the range 0 - maximum."
+  [coll maximum value]
+  (let [index (-> value
+                  (/ maximum)
+                  (* (count coll))
+                  int
+                  (min (- (count coll) 1)))]
+    (nth coll index)))

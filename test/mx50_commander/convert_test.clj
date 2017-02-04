@@ -28,3 +28,8 @@
     ;; guards against doseq not running at all
     (is (< 0 @counter))
     (is (= (count test-cases) @counter))))
+
+
+(deftest relative
+  (is (= [:a :a :b :c :c]
+         (map (partial cvt/relative [:a :b :c] 8) [0 2 3 6 9]))))
