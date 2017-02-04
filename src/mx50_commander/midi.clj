@@ -47,8 +47,9 @@
 
 (defn ^:private midi-handler
   [event timestamp]
-  (doseq [[id l] @midi-listeners]
-    (apply-listener l (assoc-event-metadata event timestamp))))
+  (let [enriched-event (assoc-event-metadata event timestamp)]
+    (doseq [[id l] @midi-listeners]
+      (apply-listener l enriched-event))))
 
 
 (defn ^:private create-midi-consumer [l]
@@ -76,14 +77,14 @@
    (when (or (nil? @midi-in) reselect)
      ;; when a device has previously been selected, stub it out
      (when @midi-in
-       (m/midi-handle-events @midi-in identity))
+       (m/midi-handle-events @midi-in (fn [& _])))
      (if-let [in (m/midi-in)]
        (do
          (reset! midi-in in)
          (m/midi-handle-events in midi-handler))
        (println "No MIDI device found.")))
-
-   (doall (map (comp create-midi-consumer second) @midi-listeners))))
+   (doseq [[id l] @midi-listeners]
+     (create-midi-consumer l))))
 
 
 (def ^:private default-listener-params
