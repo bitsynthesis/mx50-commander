@@ -60,8 +60,6 @@
   {:back-color         "VB[MC]"
    :color-correct      "VCC"
    :color-correct-gain "VCG"
-   :fade               "VFA"
-   :fade-level         "VFM"
    :fade-settings      "VFD"
    :fx-mono-a          "VDE:AMN"
    :fx-mono-b          "VDE:BMN"

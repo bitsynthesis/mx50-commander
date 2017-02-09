@@ -94,6 +94,7 @@
    the range 0 - maximum."
   [coll maximum value]
   (let [index (-> value
+                  (max 0)
                   (/ maximum)
                   (* (count coll))
                   int
