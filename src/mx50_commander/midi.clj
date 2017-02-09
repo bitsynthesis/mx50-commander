@@ -60,31 +60,33 @@
        (recur)))))
 
 
+(defn midi-select []
+  (when @midi-in
+    (m/midi-handle-events @midi-in (fn [& _])))
+  (if-let [in (m/midi-in)]
+    (do
+      (reset! midi-in in)
+      (m/midi-handle-events in midi-handler))
+  )
+
+
 ;; TODO doc
-(defn midi-stop []
-  (doseq [[id l] @midi-listeners]
-    (a/close! (:buffer l))))
+(defn midi-stop
+  ([]
+   (doseq [[id _] @midi-listeners] (midi-stop id)))
+  ([id]
+   (a/close! (:buffer (id @midi-listeners)))))
 
 
 ;; TODO doc
 (defn midi-start
-  ([] (midi-start false))
-  ([reselect]
-   (midi-stop)
-   (doseq [[id l] @midi-listeners]
-     (swap! midi-listeners assoc-in [id :buffer] (create-midi-buffer)))
-
-   (when (or (nil? @midi-in) reselect)
-     ;; when a device has previously been selected, stub it out
-     (when @midi-in
-       (m/midi-handle-events @midi-in (fn [& _])))
-     (if-let [in (m/midi-in)]
-       (do
-         (reset! midi-in in)
-         (m/midi-handle-events in midi-handler))
-       (println "No MIDI device found.")))
-   (doseq [[id l] @midi-listeners]
-     (create-midi-consumer l))))
+  ([]
+   (doseq [[id _] @midi-listeners] (midi-start id)))
+  ([id]
+   (midi-stop id)
+   (swap! midi-listeners assoc-in [id :buffer] (create-midi-buffer))
+   (when (nil? @midi-in) (midi-select))
+   (create-midi-consumer (id @midi-listeners))))
 
 
 (def ^:private default-listener-params
@@ -96,10 +98,14 @@
 ;; TODO doc
 (defn listener
   [id params]
+  (when (id @midi-listeners)
+    (midi-stop id))
   (as-> params |
    (merge default-listener-params |)
-   (assoc | :buffer (create-midi-buffer))
-   (swap! midi-listeners assoc id |)))
+   (assoc | :buffer (create-midi-buffer)
+            :id id)
+   (swap! midi-listeners assoc id |))
+  (midi-start id))
 
 
 (def ^:private default-kit-params
@@ -112,13 +118,14 @@
   (fn [device event]
    (when (<= (:first-note params) (:note event))
      (let [relative-note (- (:note event) (:first-note params))
-           relative-bank (int (/ relative-note 16))
-           bank-note (rem relative-note 16)]
-       (when-let [b (nth (:banks params) relative-bank)]
+           relative-bank (int (/ relative-note (:bank-size params)))
+           bank-note (rem relative-note (:bank-size params))]
+       (when-let [b (nth (:banks params) relative-bank nil)]
          (b device (assoc event :bank-note bank-note)))))))
 
 
 ;; TODO doc
 (defn kit
-  [id params]
-  (listener id (assoc params :handler (bank-handler params))))
+  [id user-params]
+  (let [params (merge default-kit-params user-params)]
+    (listener id (assoc params :handler (bank-handler params)))))
