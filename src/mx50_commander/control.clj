@@ -218,6 +218,4 @@
    is intended as a REPL helper."
   []
   (stop)
-  ;; TODO #midi-stop here or in #stop?
-  ;; (midi-stop)
   (System/exit 0))
