@@ -69,7 +69,7 @@
 
    http://www.rapidtables.com/convert/color/hsl-to-rgb.htm
 
-   Convert YPbPr color to RGB."
+   Convert HSL color to RGB."
   [h s l]
   (let [h_ (restrict-range h 0 360)
         s_ (/ (restrict-range s 0 100) 100)

@@ -1,24 +1,11 @@
 (ns mx50-commander.control
   "Control MX devices, start and stop sending them commands,
    and access their last sent values."
-  (:require [clojure.core.async :refer [>!! <!!] :as a]))
+  (:require [clojure.core.async :refer [>!! <!!] :as a]
+            [mx50-commander.classes]))
 
 
 (declare get-current)
-
-
-(gen-class
- :name mx50_commander.control.DeviceFileFilter
- :extends javax.swing.filechooser.FileFilter
- :prefix deviceFileFilter-)
-
-
-(defn deviceFileFilter-accept [_ file]
-  (not (nil? (re-find #"^/dev/ttyUSB[0-9]+" (.getPath file)))))
-
-
-(defn deviceFileFilter-getDescription [_]
-  "USB devices")
 
 
 (defrecord Command [id value])
@@ -36,7 +23,7 @@
 (defn ^:private select-port [device-id]
   (let [file-chooser (javax.swing.JFileChooser. "/dev")]
     (doto file-chooser
-          (.setFileFilter (mx50_commander.control.DeviceFileFilter.))
+          (.setFileFilter (mx50_commander.classes.DeviceFileFilter.))
           (.setDialogTitle (name device-id))
           (.showOpenDialog nil))
     (-> file-chooser .getSelectedFile .getPath)))
