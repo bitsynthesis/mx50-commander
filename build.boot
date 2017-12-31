@@ -9,6 +9,8 @@
 
 
 (require '[adzerk.boot-test :as boot-test]
+         '[boot.core :as boot]
+         '[clojure.java.shell :as shell]
          '[codox.boot :as codox])
 
 
@@ -44,11 +46,27 @@
                       "video mixers via USB RS232 serial "
                       "port adapter.")
     :metadata {:doc/format :markdown}
+    :filter-namespaces '#{mx50-commander.command
+                          mx50-commander.control
+                          mx50-commander.convert
+                          mx50-commander.generate}
     :source-uri (str "https://github.com"
                      "/bbakersmith/mx50-commander"
                      "/blob/{version}/{filepath}#L{line}")
     :version version)
    (target)))
+
+
+(deftask push-doc []
+  (boot/with-pre-wrap fileset
+    (shell/sh "git"
+              "subtree"
+              "push"
+              "--prefix"
+              "target/doc"
+              "origin"
+              "gh-pages")
+    fileset))
 
 
 (deftask aot-repl []

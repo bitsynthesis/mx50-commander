@@ -1,0 +1,31 @@
+@startuml
+
+partition "MIDI Handler" {
+  :MIDI event;
+}
+
+fork
+
+  partition "Listener" {
+    :channel match?;
+    :filter match?;
+    :buffer;
+    -[dotted]->
+    :handler;
+    detach
+  }
+
+fork again
+
+  partition "Listener" {
+    :channel match?;
+    :filter match?;
+    :buffer;
+    -[dotted]->
+    :handler;
+    detach
+  }
+
+end fork
+
+@enduml
