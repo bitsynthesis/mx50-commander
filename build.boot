@@ -57,15 +57,15 @@
    (target)))
 
 
-(deftask push-doc []
+(deftask doc-push []
   (boot/with-pre-wrap fileset
-    (shell/sh "git"
-              "subtree"
-              "push"
-              "--prefix"
-              "target/doc"
-              "origin"
-              "gh-pages")
+    (println (shell/sh "git"
+                       "subtree"
+                       "push"
+                       "--prefix"
+                       "target/doc"
+                       "origin"
+                       "gh-pages"))
     fileset))
 
 
